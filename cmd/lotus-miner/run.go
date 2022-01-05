@@ -4,6 +4,9 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
+
+	scServer "github.com/moran666666/sector-counter/server"
 
 	"github.com/filecoin-project/lotus/api/v1api"
 
@@ -32,6 +35,51 @@ var runCmd = &cli.Command{
 	Usage: "Start a lotus miner process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
+			Name:  "c2address",
+			Usage: "extern c2 ip and port",
+			Value: "",
+		},
+		&cli.BoolFlag{
+			Name:  "multi_wnminer",
+			Usage: "enable Multiple winningPoSt miner",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "wdpost",
+			Usage: "enable windowPoSt",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "wnpost",
+			Usage: "enable winningPoSt",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "p2p",
+			Usage: "enable P2P",
+			Value: true,
+		},
+		&cli.StringFlag{
+			Name:  "sctype",
+			Usage: "sector counter type(alloce,get)",
+			Value: "",
+		},
+		&cli.StringFlag{
+			Name:  "sclisten",
+			Usage: "host address and port the sector counter will listen on",
+			Value: "",
+		},
+		&cli.StringFlag{
+			Name:  "workername",
+			Usage: "worker name will display on jobs list",
+			Value: "",
+		},
+		&cli.StringFlag{
+			Name:  "ability",
+			Usage: "worker sealing ability",
+			Value: "AP:1,PC1:1,PC2:1,C1:1,C2:1,FIN:1,GET:1,UNS:1,RD:1",
+		},
+		&cli.StringFlag{
 			Name:  "miner-api",
 			Usage: "2345",
 		},
@@ -51,6 +99,55 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.String("c2address") != "" {
+			os.Setenv("C2_ADDRESS", cctx.String("c2address"))
+		}
+
+		if cctx.Bool("multi_wnminer") {
+			os.Setenv("LOTUS_MUL_WNMINER", "true")
+		} else {
+			os.Unsetenv("LOTUS_MUL_WNMINER")
+		}
+
+		if cctx.Bool("wdpost") {
+			os.Setenv("LOTUS_WDPOST", "true")
+		} else {
+			os.Unsetenv("LOTUS_WDPOST")
+		}
+
+		if cctx.Bool("wnpost") {
+			os.Setenv("LOTUS_WNPOST", "true")
+		} else {
+			os.Unsetenv("LOTUS_WNPOST")
+		}
+
+		scType := cctx.String("sctype")
+		if scType == "alloce" || scType == "get" {
+			os.Setenv("SC_TYPE", scType)
+
+			scListen := cctx.String("sclisten")
+			if scListen == "" {
+				log.Errorf("sclisten must be set")
+				return nil
+			}
+			os.Setenv("SC_LISTEN", scListen)
+
+			if scType == "alloce" {
+				scFilePath := filepath.Join(cctx.String(FlagMinerRepo), "sectorid")
+				go scServer.Run(scFilePath)
+			}
+		} else {
+			os.Unsetenv("SC_TYPE")
+		}
+
+		if cctx.String("workername") != "" {
+			os.Setenv("WORKER_NAME", cctx.String("workername"))
+		}
+
+		if cctx.String("ability") != "" {
+			os.Setenv("ABILITY", cctx.String("ability"))
+		}
+
 		if !cctx.Bool("enable-gpu-proving") {
 			err := os.Setenv("BELLMAN_NO_GPU", "true")
 			if err != nil {
@@ -165,7 +262,6 @@ var runCmd = &cli.Command{
 
 		if bootstrapLibP2P {
 			log.Infof("Bootstrapping libp2p network with full node")
-
 			// Bootstrap with full node
 			remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
 			if err != nil {
