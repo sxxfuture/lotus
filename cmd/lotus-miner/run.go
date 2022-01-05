@@ -6,9 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	scServer "github.com/moran666666/sector-counter/server"
-
 	"github.com/filecoin-project/lotus/api/v1api"
+	scServer "github.com/moran666666/sector-counter/server"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 
@@ -62,7 +61,7 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "sctype",
 			Usage: "sector counter type(alloce,get)",
-			Value: "",
+			Value: "alloce",
 		},
 		&cli.StringFlag{
 			Name:  "sclisten",
@@ -147,7 +146,6 @@ var runCmd = &cli.Command{
 		if cctx.String("ability") != "" {
 			os.Setenv("ABILITY", cctx.String("ability"))
 		}
-
 		if !cctx.Bool("enable-gpu-proving") {
 			err := os.Setenv("BELLMAN_NO_GPU", "true")
 			if err != nil {
@@ -229,7 +227,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("invalid config for repo, got: %T", c)
 		}
 
-		bootstrapLibP2P := cfg.Subsystems.EnableMarkets
+		//bootstrapLibP2P := cfg.Subsystems.EnableMarkets
 
 		err = lr.Close()
 		if err != nil {
@@ -260,8 +258,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting API endpoint: %w", err)
 		}
 
-		if bootstrapLibP2P {
-			log.Infof("Bootstrapping libp2p network with full node")
+		if cctx.Bool("p2p") {
 			// Bootstrap with full node
 			remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
 			if err != nil {
@@ -271,6 +268,8 @@ var runCmd = &cli.Command{
 			if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
 				return xerrors.Errorf("connecting to full node (libp2p): %w", err)
 			}
+		} else {
+			log.Warn("This miner will be disable p2p.")
 		}
 
 		log.Infof("Remote version %s", v)

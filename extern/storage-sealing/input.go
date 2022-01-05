@@ -6,12 +6,10 @@ import (
 	"sort"
 	"time"
 
-	scClient "github.com/moran666666/sector-counter/client"
-
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
-
+	scClient "github.com/moran666666/sector-counter/client"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -248,7 +246,9 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 }
 
 func (m *Sealing) handleAddPieceFailed(ctx statemachine.Context, sector SectorInfo) error {
-	return ctx.Send(SectorRetryWaitDeals{})
+	log.Errorf("No recovery plan for AddPiece failing")
+	// todo: cleanup sector / just go retry (requires adding offset param to AddPiece in sector-storage for this to be safe)
+	return nil
 }
 
 func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storage.Data, deal api.PieceDealInfo) (api.SectorOffset, error) {

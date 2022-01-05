@@ -13,6 +13,7 @@ const (
 
 	TTFetch  TaskType = "seal/v0/fetch"
 	TTUnseal TaskType = "seal/v0/unseal"
+	TTReadUnsealed TaskType = "seal/v0/unsealread"
 )
 
 var order = map[TaskType]int{

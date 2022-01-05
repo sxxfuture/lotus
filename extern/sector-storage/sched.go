@@ -47,6 +47,7 @@ type WorkerSelector interface {
 	Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a *workerHandle) (bool, error) // true if worker is acceptable for performing a task
 
 	Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) // true if a is preferred over b
+
 	FindDataWoker(ctx context.Context, task sealtasks.TaskType, sid abi.SectorID, spt abi.RegisteredSealProof, a *workerHandle) bool
 }
 
@@ -466,7 +467,6 @@ func (sh *scheduler) Close(ctx context.Context) error {
 	}
 	return nil
 }
-
 func (sh *scheduler) taskAddOne(wid WorkerID, phaseTaskType sealtasks.TaskType) {
 	if whl, ok := sh.workers[wid]; ok {
 		whl.info.TaskResourcesLk.Lock()
@@ -561,11 +561,9 @@ func (sh *scheduler) getTaskFreeCount(wid WorkerID, phaseTaskType sealtasks.Task
 		log.Infof("worker already doing P2 or C1 taskjob")
 		return 0
 	}
-
 	if phaseTaskType == sealtasks.TTFetch || phaseTaskType == sealtasks.TTFinalize ||
-		phaseTaskType == sealtasks.TTUnseal { // 不限制
+		phaseTaskType == sealtasks.TTUnseal || phaseTaskType == sealtasks.TTReadUnsealed { // 不限制
 		return 1
 	}
-
 	return 0
 }

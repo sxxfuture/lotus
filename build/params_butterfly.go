@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 )
 
@@ -53,6 +54,9 @@ func init() {
 	Devnet = true
 
 	BuildType = BuildButterflynet
+
+	// To test out what this proposal would like on devnets / testnets: https://github.com/filecoin-project/FIPs/pull/190
+	miner6.FaultMaxAge = miner6.WPoStProvingPeriod * 42
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)

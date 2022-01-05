@@ -71,7 +71,6 @@ func (s *existingSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, 
 }
 
 var _ WorkerSelector = &existingSelector{}
-
 func (s *existingSelector) FindDataWoker(ctx context.Context, task sealtasks.TaskType, sid abi.SectorID, spt abi.RegisteredSealProof, whnd *workerHandle) bool {
 	tasks, err := whnd.workerRpc.TaskTypes(ctx)
 	if err != nil {

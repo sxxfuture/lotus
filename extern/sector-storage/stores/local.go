@@ -389,13 +389,13 @@ func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storifac
 
 		stat, err := p.stat(st.localStorage)
 		if err != nil {
-			return nil, xerrors.Errorf("getting local storage stat: %w", err)
+			//return nil, xerrors.Errorf("getting local storage stat: %w", err)
 		}
 
 		overhead := int64(overheadTab[fileType]) * int64(ssize) / storiface.FSOverheadDen
 
 		if stat.Available < overhead {
-			// return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available))
+			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available))
 		}
 
 		p.reserved += overhead
@@ -701,7 +701,6 @@ func (st *Local) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 }
 
 var _ Store = &Local{}
-
 func (st *Local) CheckDeclareSector(ctx context.Context, sid abi.SectorID, fileType storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]SectorStorageInfo, error) {
 	si0, err := st.index.StorageFindSector(ctx, sid, fileType, ssize, false)
 	if len(si0) > 0 || err != nil {

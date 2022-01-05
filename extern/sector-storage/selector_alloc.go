@@ -49,12 +49,11 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 	if err != nil {
 		return false, xerrors.Errorf("getting sector size: %w", err)
 	}
-
-	if task == sealtasks.TTAddPiece {
-		if isAddPice := s.index.MaybeAddPice(ctx, s.alloc, ssize, s.ptype); !isAddPice {
-			return false, xerrors.Errorf("disk space issue")
-		}
-	}
+	//if task == sealtasks.TTAddPiece {
+	//	if isAddPice := s.index.MaybeAddPice(ctx, s.alloc, ssize, s.ptype); !isAddPice {
+	//		return false, xerrors.Errorf("disk space issue")
+	//	}
+	//}
 
 	best, err := s.index.StorageBestAlloc(ctx, s.alloc, ssize, s.ptype)
 	if err != nil {
@@ -75,7 +74,6 @@ func (s *allocSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *
 }
 
 var _ WorkerSelector = &allocSelector{}
-
 func (s *allocSelector) FindDataWoker(ctx context.Context, task sealtasks.TaskType, sid abi.SectorID, spt abi.RegisteredSealProof, whnd *workerHandle) bool {
 	paths, err := whnd.workerRpc.Paths(ctx)
 	if err != nil {

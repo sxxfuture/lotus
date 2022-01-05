@@ -138,11 +138,12 @@ func (sb *Sealer) createTemplateFile(unsealedFile string, pieceSize abi.Unpadded
 }
 
 func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, file storage.Data) (abi.PieceInfo, error) {
-	if mypieceInfo, err := sb.myAddPiece(ctx, sector, pieceSize); err == nil {
-		return mypieceInfo, nil
-	} else {
-		log.Warn(err)
-	}
+	//if mypieceInfo, err := sb.myAddPiece(ctx, sector, pieceSize); err == nil {
+	//	return mypieceInfo, nil
+	//} else {
+	//	log.Warn(err)
+	//}
+
 
 	// TODO: allow tuning those:
 	chunk := abi.PaddedPieceSize(4 << 20)
@@ -324,7 +325,6 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 
 		pieceCID = paddedCid
 	}
-
 	sb.createTemplateFile(stagedPath.Unsealed, pieceSize, pieceCID)
 
 	return abi.PieceInfo{

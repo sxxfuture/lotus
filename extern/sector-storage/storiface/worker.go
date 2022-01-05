@@ -153,7 +153,6 @@ type WorkerReturn interface {
 	ReturnReadPiece(ctx context.Context, callID CallID, ok bool, err *CallError) error
 	ReturnFetch(ctx context.Context, callID CallID, err *CallError) error
 }
-
 type TaskConfig struct {
 	LimitCount int
 	RunCount   int
@@ -293,6 +292,12 @@ func NewTaskLimitConfig() map[sealtasks.TaskType]*TaskConfig {
 	if _, ok := cfgResources[sealtasks.TTUnseal]; !ok {
 		cfgResources[sealtasks.TTUnseal] = &TaskConfig{
 			LimitCount: config.Unseal,
+			RunCount:   0,
+		}
+	}
+	if _, ok := cfgResources[sealtasks.TTReadUnsealed]; !ok {
+		cfgResources[sealtasks.TTReadUnsealed] = &TaskConfig{
+			LimitCount: config.ReadUnsealed,
 			RunCount:   0,
 		}
 	}
