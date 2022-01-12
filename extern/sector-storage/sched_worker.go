@@ -117,19 +117,23 @@ func (sw *schedWorker) handleWorker() {
 			}
 		}
 
-		for { // 循环等待woker做完任务返回或有调度窗口进来，// wait for more windows to come in, or for tasks to get finished (blocking)
-			if !sw.checkSession(ctx) { // ping the worker and check session 如果连接不上，禁用后一直试探；如果检查发现session id不一致则弃用
+		// wait for more windows to come in, or for tasks to get finished (blocking)
+		for {
+			// ping the worker and check session
+			if !sw.checkSession(ctx) {
 				return // invalid session / exiting
 			}
 
-			{ // session looks good
+			// session looks good
+			{
 				sched.workersLk.Lock()
 				enabled := worker.enabled
 				worker.enabled = true
 				sched.workersLk.Unlock()
 
 				if !enabled {
-					break // go send window requests
+					// go send window requests
+					break
 				}
 			}
 
@@ -144,6 +148,7 @@ func (sw *schedWorker) handleWorker() {
 				return
 			}
 		}
+
 	}
 }
 

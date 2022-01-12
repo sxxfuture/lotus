@@ -487,7 +487,6 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	if err != nil {
 		panic(err)
 	}
-
 	if env, ok := os.LookupEnv("WORKER_NAME"); ok {
 		hostname = hostname + "-" + env
 	}

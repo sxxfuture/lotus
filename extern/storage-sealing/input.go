@@ -6,12 +6,10 @@ import (
 	"sort"
 	"time"
 
-	scClient "github.com/moran666666/sector-counter/client"
-
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
-
+	scClient "github.com/moran666666/sector-counter/client"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
