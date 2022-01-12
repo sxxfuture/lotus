@@ -18,7 +18,7 @@ EOF
 }
 
 build(){
-    mainnet='all lotus-shed lotus-wallet lotus-gateway'
+    mainnet='all lotus-shed lotus-wallet lotus-gateway lotus-stats'
     calibnet='calibnet'
     devnet='2k'
     the_env=$1
