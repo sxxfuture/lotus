@@ -262,6 +262,7 @@ var runCmd = &cli.Command{
 
 		if bootstrapLibP2P {
 			log.Infof("Bootstrapping libp2p network with full node")
+
 			// Bootstrap with full node
 			remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
 			if err != nil {
