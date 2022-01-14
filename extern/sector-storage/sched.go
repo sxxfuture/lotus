@@ -52,7 +52,7 @@ type WorkerSelector interface {
 
 type scheduler struct {
 	workersLk sync.RWMutex
-	workers   map[WorkerID]*workerHandle
+	workers   map[storiface.WorkerID]*workerHandle
 
 	schedule       chan *workerRequest
 	windowRequests chan *schedWindowRequest
@@ -96,7 +96,7 @@ type workerHandle struct {
 }
 
 type schedWindowRequest struct {
-	worker WorkerID
+	worker storiface.WorkerID
 
 	done chan *schedWindow
 }
@@ -109,17 +109,18 @@ type schedWindow struct {
 type workerDisableReq struct {
 	todo          []*workerRequest
 	activeWindows []*schedWindow
-	wid           WorkerID
+	wid           storiface.WorkerID
 	done          func()
 }
 
 type activeResources struct {
 	memUsedMin uint64
 	memUsedMax uint64
-	gpuUsed    bool
+	gpuUsed    float64
 	cpuUse     uint64
 
-	cond *sync.Cond
+	cond    *sync.Cond
+	waiting int
 }
 
 type workerRequest struct {
@@ -146,7 +147,7 @@ type workerResponse struct {
 
 func newScheduler() *scheduler {
 	return &scheduler{
-		workers: map[WorkerID]*workerHandle{},
+		workers: map[storiface.WorkerID]*workerHandle{},
 
 		schedule:       make(chan *workerRequest),
 		windowRequests: make(chan *schedWindowRequest, 20),
@@ -156,8 +157,9 @@ func newScheduler() *scheduler {
 		schedQueue: &requestQueue{},
 
 		workTracker: &workTracker{
-			done:    map[storiface.CallID]struct{}{},
-			running: map[storiface.CallID]trackedWork{},
+			done:     map[storiface.CallID]struct{}{},
+			running:  map[storiface.CallID]trackedWork{},
+			prepared: map[uuid.UUID]trackedWork{},
 		},
 
 		info: make(chan func(interface{})),
