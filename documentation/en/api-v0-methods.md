@@ -1269,8 +1269,7 @@ Response:
     "Stages": {
       "Stages": null
     }
-  },
-  "Event": 5
+  }
 }
 ```
 

@@ -3,11 +3,17 @@
 - [ ] Import new actors
 - [ ] Define upgrade heights in `build/params_`
 - [ ] Generate adapters
-  - [ ] Update `gen/inlinegen-data.json`
-  - [ ] Update `chain/actors/version.go`
+  - [ ] Add the new version in `chain/actors/agen/main.go`
   - [ ] Update adapter code in `chain/actors/builtin` if needed
-  - [ ] Run `make actors-gen`
-- [ ] Update `chain/consensus/filcns/upgrades.go`
+- [ ] Update `chain/actors/policy/policy.go`
+- [ ] Update `chain/actors/version.go`
+- [ ] Register in `chain/vm/invoker.go`
+- [ ] Register in `chain/vm/mkactor.go`
+- [ ] Update `chain/types/state.go`
+- [ ] Update `chain/state/statetree.go` (New / Load)
+- [ ] Update `chain/stmgr/forks.go`
   - [ ] Schedule
   - [ ] Migration
-- [ ] Update upgrade schedule in `chain/sync_test.go`
+- [ ] Update upgrade schedule in `api/test/test.go` and `chain/sync_test.go`
+- [ ] Update `NewestNetworkVersion` in `build/params_shared_vals.go`
+- [ ] Register in init in `chain/stmgr/utils.go`

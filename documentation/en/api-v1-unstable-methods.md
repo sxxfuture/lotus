@@ -41,7 +41,6 @@
   * [ClientDataTransferUpdates](#ClientDataTransferUpdates)
   * [ClientDealPieceCID](#ClientDealPieceCID)
   * [ClientDealSize](#ClientDealSize)
-  * [ClientExport](#ClientExport)
   * [ClientFindData](#ClientFindData)
   * [ClientGenCar](#ClientGenCar)
   * [ClientGetDealInfo](#ClientGetDealInfo)
@@ -60,7 +59,7 @@
   * [ClientRestartDataTransfer](#ClientRestartDataTransfer)
   * [ClientRetrieve](#ClientRetrieve)
   * [ClientRetrieveTryRestartInsufficientFunds](#ClientRetrieveTryRestartInsufficientFunds)
-  * [ClientRetrieveWait](#ClientRetrieveWait)
+  * [ClientRetrieveWithEvents](#ClientRetrieveWithEvents)
   * [ClientStartDeal](#ClientStartDeal)
   * [ClientStatelessDeal](#ClientStatelessDeal)
 * [Create](#Create)
@@ -109,7 +108,6 @@
   * [MsigApprove](#MsigApprove)
   * [MsigApproveTxnHash](#MsigApproveTxnHash)
   * [MsigCancel](#MsigCancel)
-  * [MsigCancelTxnHash](#MsigCancelTxnHash)
   * [MsigCreate](#MsigCreate)
   * [MsigGetAvailableBalance](#MsigGetAvailableBalance)
   * [MsigGetPending](#MsigGetPending)
@@ -1056,32 +1054,6 @@ Response:
 }
 ```
 
-### ClientExport
-ClientExport exports a file stored in the local filestore to a system file
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  {
-    "Root": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "DAGs": null,
-    "FromLocalCAR": "string value",
-    "DealID": 5
-  },
-  {
-    "Path": "string value",
-    "IsCAR": true
-  }
-]
-```
-
-Response: `{}`
-
 ### ClientFindData
 ClientFindData identifies peers that have a certain file, and returns QueryOffers (one per peer).
 
@@ -1309,8 +1281,7 @@ Response:
     "Stages": {
       "Stages": null
     }
-  },
-  "Event": 5
+  }
 }
 ```
 
@@ -1510,8 +1481,9 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "Piece": null,
-    "DataSelector": "Links/21/Hash/Links/42/Hash",
+    "DatamodelPathSelector": "Links/21/Hash/Links/42/Hash",
     "Size": 42,
+    "FromLocalCAR": "string value",
     "Total": "0",
     "UnsealPrice": "0",
     "PaymentInterval": 42,
@@ -1523,16 +1495,15 @@ Inputs:
       "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
       "PieceCID": null
     }
+  },
+  {
+    "Path": "string value",
+    "IsCAR": true
   }
 ]
 ```
 
-Response:
-```json
-{
-  "DealID": 5
-}
-```
+Response: `{}`
 
 ### ClientRetrieveTryRestartInsufficientFunds
 ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
@@ -1550,8 +1521,9 @@ Inputs:
 
 Response: `{}`
 
-### ClientRetrieveWait
-ClientRetrieveWait waits for retrieval to be complete
+### ClientRetrieveWithEvents
+ClientRetrieveWithEvents initiates the retrieval of a file, as specified in the order, and provides a channel
+of status updates.
 
 
 Perms: admin
@@ -1559,11 +1531,43 @@ Perms: admin
 Inputs:
 ```json
 [
-  5
+  {
+    "Root": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Piece": null,
+    "DatamodelPathSelector": "Links/21/Hash/Links/42/Hash",
+    "Size": 42,
+    "FromLocalCAR": "string value",
+    "Total": "0",
+    "UnsealPrice": "0",
+    "PaymentInterval": 42,
+    "PaymentIntervalIncrease": 42,
+    "Client": "f01234",
+    "Miner": "f01234",
+    "MinerPeer": {
+      "Address": "f01234",
+      "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "PieceCID": null
+    }
+  },
+  {
+    "Path": "string value",
+    "IsCAR": true
+  }
 ]
 ```
 
-Response: `{}`
+Response:
+```json
+{
+  "Event": 5,
+  "Status": 0,
+  "BytesReceived": 42,
+  "FundsSpent": "0",
+  "Err": "string value"
+}
+```
 
 ### ClientStartDeal
 ClientStartDeal proposes a deal with a miner.
@@ -2697,44 +2701,6 @@ Response:
 ```
 
 ### MsigCancel
-MsigCancel cancels a previously-proposed multisig message
-It takes the following params: <multisig address>, <proposed transaction ID> <signer address>
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  42,
-  "f01234"
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ==",
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    }
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigCancelTxnHash
 MsigCancel cancels a previously-proposed multisig message
 It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
 <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>

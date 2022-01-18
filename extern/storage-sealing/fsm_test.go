@@ -33,8 +33,7 @@ func TestHappyPath(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]SectorState{},
-				byState:  map[SectorState]int64{},
+				bySector: map[abi.SectorID]statSectorState{},
 			},
 			notifee: func(before, after SectorInfo) {
 				notif = append(notif, struct{ before, after SectorInfo }{before, after})
@@ -95,8 +94,7 @@ func TestHappyPathFinalizeEarly(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]SectorState{},
-				byState:  map[SectorState]int64{},
+				bySector: map[abi.SectorID]statSectorState{},
 			},
 			notifee: func(before, after SectorInfo) {
 				notif = append(notif, struct{ before, after SectorInfo }{before, after})
@@ -163,8 +161,7 @@ func TestCommitFinalizeFailed(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]SectorState{},
-				byState:  map[SectorState]int64{},
+				bySector: map[abi.SectorID]statSectorState{},
 			},
 			notifee: func(before, after SectorInfo) {
 				notif = append(notif, struct{ before, after SectorInfo }{before, after})
@@ -202,8 +199,7 @@ func TestSeedRevert(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]SectorState{},
-				byState:  map[SectorState]int64{},
+				bySector: map[abi.SectorID]statSectorState{},
 			},
 		},
 		t:     t,
@@ -256,8 +252,7 @@ func TestPlanCommittingHandlesSectorCommitFailed(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]SectorState{},
-				byState:  map[SectorState]int64{},
+				bySector: map[abi.SectorID]statSectorState{},
 			},
 		},
 		t:     t,
@@ -294,8 +289,7 @@ func TestBrokenState(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]SectorState{},
-				byState:  map[SectorState]int64{},
+				bySector: map[abi.SectorID]statSectorState{},
 			},
 			notifee: func(before, after SectorInfo) {
 				notif = append(notif, struct{ before, after SectorInfo }{before, after})
@@ -330,8 +324,7 @@ func TestTicketExpired(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]SectorState{},
-				byState:  map[SectorState]int64{},
+				bySector: map[abi.SectorID]statSectorState{},
 			},
 			notifee: func(before, after SectorInfo) {
 				notif = append(notif, struct{ before, after SectorInfo }{before, after})

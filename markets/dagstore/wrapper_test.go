@@ -3,19 +3,21 @@ package dagstore
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/node/config"
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/dagstore/shard"
 
-	"github.com/filecoin-project/lotus/node/config"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
 )
 
 // TestWrapperAcquireRecovery verifies that if acquire shard returns a "not found"
@@ -189,7 +191,7 @@ func (m mockLotusMount) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m mockLotusMount) FetchUnsealedPiece(context.Context, cid.Cid) (mount.Reader, error) {
+func (m mockLotusMount) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
 	panic("implement me")
 }
 

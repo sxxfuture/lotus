@@ -35,13 +35,7 @@ func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
 	out := map[uuid.UUID][]storiface.WorkerJob{}
 	calls := map[storiface.CallID]struct{}{}
 
-	running, preparing := m.sched.workTracker.Running()
-
-	for _, t := range running {
-		out[uuid.UUID(t.worker)] = append(out[uuid.UUID(t.worker)], t.job)
-		calls[t.job.ID] = struct{}{}
-	}
-	for _, t := range preparing {
+	for _, t := range m.sched.workTracker.Running() {
 		out[uuid.UUID(t.worker)] = append(out[uuid.UUID(t.worker)], t.job)
 		calls[t.job.ID] = struct{}{}
 	}
@@ -56,7 +50,7 @@ func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
 	// 				ID:      storiface.UndefCall,
 	// 				Sector:  request.sector.ID,
 	// 				Task:    request.taskType,
-	// 				RunWait: wi + 2,
+	// 				RunWait: wi + 1,
 	// 				Start:   request.start,
 	// 			})
 	// 		}

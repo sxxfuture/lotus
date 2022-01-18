@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	lcli "github.com/filecoin-project/lotus/cli"
 
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
@@ -42,7 +41,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/tools/stats/sync"
+	"github.com/filecoin-project/lotus/tools/stats"
 )
 
 var log = logging.Logger("main")
@@ -161,15 +160,15 @@ var findMinersCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := stats.GetFullNodeAPI(cctx.Context, cctx.String("lotus-path"))
 		if err != nil {
-			return err
+			log.Fatal(err)
 		}
 		defer closer()
 
 		if !cctx.Bool("no-sync") {
-			if err := sync.SyncWait(ctx, api); err != nil {
-				return err
+			if err := stats.WaitForSyncComplete(ctx, api); err != nil {
+				log.Fatal(err)
 			}
 		}
 
@@ -246,7 +245,7 @@ var recoverMinersCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := stats.GetFullNodeAPI(cctx.Context, cctx.String("lotus-path"))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -267,8 +266,8 @@ var recoverMinersCmd = &cli.Command{
 		}
 
 		if !cctx.Bool("no-sync") {
-			if err := sync.SyncWait(ctx, api); err != nil {
-				return err
+			if err := stats.WaitForSyncComplete(ctx, api); err != nil {
+				log.Fatal(err)
 			}
 		}
 
@@ -428,7 +427,7 @@ var runCmd = &cli.Command{
 		}()
 
 		ctx := context.Background()
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := stats.GetFullNodeAPI(cctx.Context, cctx.String("lotus-path"))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -449,12 +448,12 @@ var runCmd = &cli.Command{
 		}
 
 		if !cctx.Bool("no-sync") {
-			if err := sync.SyncWait(ctx, api); err != nil {
-				return err
+			if err := stats.WaitForSyncComplete(ctx, api); err != nil {
+				log.Fatal(err)
 			}
 		}
 
-		tipsetsCh, err := sync.BufferedTipsetChannel(ctx, api, r.Height(), cctx.Int("head-delay"))
+		tipsetsCh, err := stats.GetTips(ctx, api, r.Height(), cctx.Int("head-delay"))
 		if err != nil {
 			log.Fatal(err)
 		}

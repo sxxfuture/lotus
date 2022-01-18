@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.13.2
+   1.13.0
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -590,8 +590,7 @@ CATEGORY:
    DEVELOPER
 
 OPTIONS:
-   --timeout value  duration to wait till fail (default: 30s)
-   --help, -h       show help (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -630,7 +629,6 @@ COMMANDS:
    reset-blocklist    Remove all entries from the miner's piece CID blocklist
    set-seal-duration  Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.
    pending-publish    list deals waiting in publish queue
-   retry-publish      retry publishing a deal
    help, h            Shows a list of commands or help for one command
 
 OPTIONS:
@@ -824,19 +822,6 @@ USAGE:
 OPTIONS:
    --publish-now  send a publish message now (default: false)
    --help, -h     show help (default: false)
-   
-```
-
-### lotus-miner storage-deals retry-publish
-```
-NAME:
-   lotus-miner storage-deals retry-publish - retry publishing a deal
-
-USAGE:
-   lotus-miner storage-deals retry-publish [command options] <proposal CID>
-
-OPTIONS:
-   --help, -h  show help (default: false)
    
 ```
 
@@ -1460,8 +1445,7 @@ USAGE:
    lotus-miner pieces list-cids [command options] [arguments...]
 
 OPTIONS:
-   --verbose, -v  (default: false)
-   --help, -h     show help (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1915,10 +1899,9 @@ USAGE:
    lotus-miner proving check [command options] <deadlineIdx>
 
 OPTIONS:
-   --only-bad          print only bad sectors (default: false)
-   --slow              run slower checks (default: false)
-   --storage-id value  filter sectors by storage path (path id)
-   --help, -h          show help (default: false)
+   --only-bad  print only bad sectors (default: false)
+   --slow      run slower checks (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1984,8 +1967,6 @@ OPTIONS:
    --seal               (for init) use path for sealing (default: false)
    --store              (for init) use path for long-term storage (default: false)
    --max-storage value  (for init) limit storage space for sectors (expensive for very large paths!)
-   --groups value       path group names
-   --allow-to value     path groups allowed to pull data from this path (allow all if not specified)
    --help, -h           show help (default: false)
    
 ```

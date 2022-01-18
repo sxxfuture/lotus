@@ -155,8 +155,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(DAGStoreKey, modules.DAGStore),
 
 			// Markets (retrieval)
-			Override(new(dagstore.SectorAccessor), sectoraccessor.NewSectorAccessor),
-			Override(new(retrievalmarket.SectorAccessor), From(new(dagstore.SectorAccessor))),
+			Override(new(retrievalmarket.SectorAccessor), sectoraccessor.NewSectorAccessor),
 			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
 			Override(new(rmnet.RetrievalMarketNetwork), modules.RetrievalNetwork),
 			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),

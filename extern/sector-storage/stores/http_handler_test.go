@@ -63,7 +63,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 	tcs := map[string]struct {
 		piFnc    func(pi *pieceInfo)
 		storeFnc func(s *mocks.MockStore)
-		pfFunc   func(s *mocks.MockPartialFileHandler)
+		pfFunc   func(s *mocks.MockpartialFileHandler)
 
 		// expectation
 		expectedStatusCode int
@@ -129,7 +129,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 					storiface.SectorPaths{}, nil).Times(1)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks.MockpartialFileHandler) {
 				pf.EXPECT().OpenPartialFile(abi.PaddedPieceSize(sectorSize), pfPath).Return(&partialfile.PartialFile{},
 					xerrors.New("some error")).Times(1)
 			},
@@ -146,7 +146,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 					storiface.SectorPaths{}, nil).Times(1)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks.MockpartialFileHandler) {
 				pf.EXPECT().OpenPartialFile(abi.PaddedPieceSize(sectorSize), pfPath).Return(emptyPartialFile,
 					nil).Times(1)
 
@@ -165,7 +165,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 					storiface.SectorPaths{}, nil).Times(1)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks.MockpartialFileHandler) {
 				pf.EXPECT().OpenPartialFile(abi.PaddedPieceSize(sectorSize), pfPath).Return(emptyPartialFile,
 					nil).Times(1)
 
@@ -184,7 +184,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 					storiface.SectorPaths{}, nil).Times(1)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks.MockpartialFileHandler) {
 				pf.EXPECT().OpenPartialFile(abi.PaddedPieceSize(sectorSize), pfPath).Return(emptyPartialFile,
 					nil).Times(1)
 
@@ -203,7 +203,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 			defer mockCtrl.Finish()
 
 			lstore := mocks.NewMockStore(mockCtrl)
-			pfhandler := mocks.NewMockPartialFileHandler(mockCtrl)
+			pfhandler := mocks.NewMockpartialFileHandler(mockCtrl)
 
 			handler := &stores.FetchHandler{
 				lstore,
@@ -371,7 +371,7 @@ func TestRemoteGetSector(t *testing.T) {
 			// when test is done, assert expectations on all mock objects.
 			defer mockCtrl.Finish()
 			lstore := mocks.NewMockStore(mockCtrl)
-			pfhandler := mocks.NewMockPartialFileHandler(mockCtrl)
+			pfhandler := mocks.NewMockpartialFileHandler(mockCtrl)
 
 			var path string
 

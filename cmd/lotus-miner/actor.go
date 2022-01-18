@@ -257,7 +257,7 @@ var actorWithdrawCmd = &cli.Command{
 			amount = abi.TokenAmount(f)
 
 			if amount.GreaterThan(available) {
-				return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", types.FIL(amount), types.FIL(available))
+				return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", amount, available)
 			}
 		}
 
@@ -283,7 +283,6 @@ var actorWithdrawCmd = &cli.Command{
 
 		// wait for it to get mined into a block
 		fmt.Printf("waiting for %d epochs for confirmation..\n", uint64(cctx.Int("confidence")))
-
 		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), uint64(cctx.Int("confidence")))
 		if err != nil {
 			return err
@@ -306,9 +305,9 @@ var actorWithdrawCmd = &cli.Command{
 				return err
 			}
 
-			fmt.Printf("Successfully withdrew %s \n", types.FIL(withdrawn))
+			fmt.Printf("Successfully withdrew %s FIL\n", withdrawn)
 			if withdrawn.LessThan(amount) {
-				fmt.Printf("Note that this is less than the requested amount of %s\n", types.FIL(amount))
+				fmt.Printf("Note that this is less than the requested amount of %s FIL\n", amount)
 			}
 		}
 

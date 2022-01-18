@@ -15,7 +15,7 @@ import (
 
 const (
 	SubmitConfidence    = 4
-	ChallengeConfidence = 1
+	ChallengeConfidence = 10
 )
 
 type CompleteGeneratePoSTCb func(posts []miner.SubmitWindowedPoStParams, err error)

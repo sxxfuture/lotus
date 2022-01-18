@@ -60,7 +60,6 @@ func main() {
 		storageCmd,
 		setCmd,
 		waitQuietCmd,
-		resourcesCmd,
 		tasksCmd,
 	}
 

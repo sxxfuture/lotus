@@ -17,6 +17,7 @@ description: |
 
   https://github.com/filecoin-project/lotus
 
+grade: devel
 confinement: strict
 
 parts:

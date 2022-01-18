@@ -291,7 +291,6 @@ method-gen: api-gen
 	(cd ./lotuspond/front/src/chain && $(GOCC) run ./methodgen.go)
 
 actors-gen:
-	$(GOCC) run ./gen/inline-gen . gen/inlinegen-data.json
 	$(GOCC) run ./chain/actors/agen
 	$(GOCC) fmt ./...
 

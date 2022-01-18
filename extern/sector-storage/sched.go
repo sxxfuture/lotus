@@ -52,7 +52,7 @@ type WorkerSelector interface {
 
 type scheduler struct {
 	workersLk sync.RWMutex
-	workers   map[storiface.WorkerID]*workerHandle
+	workers   map[WorkerID]*workerHandle
 
 	schedule       chan *workerRequest
 	windowRequests chan *schedWindowRequest
@@ -96,7 +96,7 @@ type workerHandle struct {
 }
 
 type schedWindowRequest struct {
-	worker storiface.WorkerID
+	worker WorkerID
 
 	done chan *schedWindow
 }
@@ -109,18 +109,17 @@ type schedWindow struct {
 type workerDisableReq struct {
 	todo          []*workerRequest
 	activeWindows []*schedWindow
-	wid           storiface.WorkerID
+	wid           WorkerID
 	done          func()
 }
 
 type activeResources struct {
 	memUsedMin uint64
 	memUsedMax uint64
-	gpuUsed    float64
+	gpuUsed    bool
 	cpuUse     uint64
 
-	cond    *sync.Cond
-	waiting int
+	cond *sync.Cond
 }
 
 type workerRequest struct {
@@ -147,7 +146,7 @@ type workerResponse struct {
 
 func newScheduler() *scheduler {
 	return &scheduler{
-		workers: map[storiface.WorkerID]*workerHandle{},
+		workers: map[WorkerID]*workerHandle{},
 
 		schedule:       make(chan *workerRequest),
 		windowRequests: make(chan *schedWindowRequest, 20),
@@ -157,9 +156,8 @@ func newScheduler() *scheduler {
 		schedQueue: &requestQueue{},
 
 		workTracker: &workTracker{
-			done:     map[storiface.CallID]struct{}{},
-			running:  map[storiface.CallID]trackedWork{},
-			prepared: map[uuid.UUID]trackedWork{},
+			done:    map[storiface.CallID]struct{}{},
+			running: map[storiface.CallID]trackedWork{},
 		},
 
 		info: make(chan func(interface{})),
@@ -294,7 +292,7 @@ func (sh *scheduler) trySched() {
 		task := (*sh.schedQueue)[sqi]
 
 		tried := 0
-		var acceptable []storiface.WorkerID
+		var acceptable []WorkerID
 		var freetable []int
 		best := 0
 		localWorker := false
@@ -358,9 +356,9 @@ func (sh *scheduler) trySched() {
 	}
 }
 
-func (sh *scheduler) assignWorker(wid storiface.WorkerID, w *workerHandle, req *workerRequest) error {
+func (sh *scheduler) assignWorker(wid WorkerID, w *workerHandle, req *workerRequest) error {
 	sh.taskAddOne(wid, req.taskType)
-	needRes := storiface.ResourceTable[req.taskType][req.sector.ProofType]
+	needRes := ResourceTable[req.taskType][req.sector.ProofType]
 
 	w.lk.Lock()
 	w.preparing.add(w.info.Resources, needRes)
@@ -469,7 +467,7 @@ func (sh *scheduler) Close(ctx context.Context) error {
 	return nil
 }
 
-func (sh *scheduler) taskAddOne(wid storiface.WorkerID, phaseTaskType sealtasks.TaskType) {
+func (sh *scheduler) taskAddOne(wid WorkerID, phaseTaskType sealtasks.TaskType) {
 	if whl, ok := sh.workers[wid]; ok {
 		whl.info.TaskResourcesLk.Lock()
 		defer whl.info.TaskResourcesLk.Unlock()
@@ -479,7 +477,7 @@ func (sh *scheduler) taskAddOne(wid storiface.WorkerID, phaseTaskType sealtasks.
 	}
 }
 
-func (sh *scheduler) taskReduceOne(wid storiface.WorkerID, phaseTaskType sealtasks.TaskType) {
+func (sh *scheduler) taskReduceOne(wid WorkerID, phaseTaskType sealtasks.TaskType) {
 	if whl, ok := sh.workers[wid]; ok {
 		whl.info.TaskResourcesLk.Lock()
 		defer whl.info.TaskResourcesLk.Unlock()
@@ -489,7 +487,7 @@ func (sh *scheduler) taskReduceOne(wid storiface.WorkerID, phaseTaskType sealtas
 	}
 }
 
-func (sh *scheduler) getTaskCount(wid storiface.WorkerID, phaseTaskType sealtasks.TaskType, typeCount string) int {
+func (sh *scheduler) getTaskCount(wid WorkerID, phaseTaskType sealtasks.TaskType, typeCount string) int {
 	if whl, ok := sh.workers[wid]; ok {
 		if counts, ok := whl.info.TaskResources[phaseTaskType]; ok {
 			whl.info.TaskResourcesLk.Lock()
@@ -505,7 +503,7 @@ func (sh *scheduler) getTaskCount(wid storiface.WorkerID, phaseTaskType sealtask
 	return 0
 }
 
-func (sh *scheduler) getTaskFreeCount(wid storiface.WorkerID, phaseTaskType sealtasks.TaskType) int {
+func (sh *scheduler) getTaskFreeCount(wid WorkerID, phaseTaskType sealtasks.TaskType) int {
 	limitCount := sh.getTaskCount(wid, phaseTaskType, "limit") // json文件限制的任务数量
 	runCount := sh.getTaskCount(wid, phaseTaskType, "run")     // 运行中的任务数量
 	freeCount := limitCount - runCount

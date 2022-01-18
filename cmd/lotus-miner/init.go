@@ -13,8 +13,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
-
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
@@ -646,26 +644,11 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, peerid peer.ID,
 		return address.Address{}, err
 	}
 
-	sender := owner
-	if fromstr := cctx.String("from"); fromstr != "" {
-		faddr, err := address.NewFromString(fromstr)
-		if err != nil {
-			return address.Undef, fmt.Errorf("could not parse from address: %w", err)
-		}
-		sender = faddr
-	}
-
-	// make sure the sender account exists on chain
-	_, err = api.StateLookupID(ctx, owner, types.EmptyTSK)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("sender must exist on chain: %w", err)
-	}
-
 	// make sure the worker account exists on chain
 	_, err = api.StateLookupID(ctx, worker, types.EmptyTSK)
 	if err != nil {
 		signed, err := api.MpoolPushMessage(ctx, &types.Message{
-			From:  sender,
+			From:  owner,
 			To:    worker,
 			Value: types.NewInt(0),
 		}, nil)
@@ -685,44 +668,33 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, peerid peer.ID,
 		}
 	}
 
-	// make sure the owner account exists on chain
-	_, err = api.StateLookupID(ctx, owner, types.EmptyTSK)
+	nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
 	if err != nil {
-		signed, err := api.MpoolPushMessage(ctx, &types.Message{
-			From:  sender,
-			To:    owner,
-			Value: types.NewInt(0),
-		}, nil)
-		if err != nil {
-			return address.Undef, xerrors.Errorf("push owner init: %w", err)
-		}
-
-		log.Infof("Initializing owner account %s, message: %s", worker, signed.Cid())
-		log.Infof("Waiting for confirmation")
-
-		mw, err := api.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, lapi.LookbackNoLimit, true)
-		if err != nil {
-			return address.Undef, xerrors.Errorf("waiting for owner init: %w", err)
-		}
-		if mw.Receipt.ExitCode != 0 {
-			return address.Undef, xerrors.Errorf("initializing owner account failed: exit code %d", mw.Receipt.ExitCode)
-		}
+		return address.Undef, xerrors.Errorf("getting network version: %w", err)
 	}
 
-	// Note: the correct thing to do would be to call SealProofTypeFromSectorSize if actors version is v3 or later, but this still works
-	spt, err := miner.WindowPoStProofTypeFromSectorSize(abi.SectorSize(ssize))
+	spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), nv)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("getting post proof type: %w", err)
+		return address.Undef, xerrors.Errorf("getting seal proof type: %w", err)
 	}
 
-	params, err := actors.SerializeParams(&power6.CreateMinerParams{
-		Owner:               owner,
-		Worker:              worker,
-		WindowPoStProofType: spt,
-		Peer:                abi.PeerID(peerid),
+	params, err := actors.SerializeParams(&power2.CreateMinerParams{
+		Owner:         owner,
+		Worker:        worker,
+		SealProofType: spt,
+		Peer:          abi.PeerID(peerid),
 	})
 	if err != nil {
 		return address.Undef, err
+	}
+
+	sender := owner
+	if fromstr := cctx.String("from"); fromstr != "" {
+		faddr, err := address.NewFromString(fromstr)
+		if err != nil {
+			return address.Undef, fmt.Errorf("could not parse from address: %w", err)
+		}
+		sender = faddr
 	}
 
 	createStorageMinerMsg := &types.Message{

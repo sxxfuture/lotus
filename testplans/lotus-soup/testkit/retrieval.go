@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -52,7 +51,7 @@ func RetrieveData(t *TestEnvironment, ctx context.Context, client api.FullNode, 
 		IsCAR: carExport,
 	}
 	t1 = time.Now()
-	err = (&v0api.WrapperV1Full{FullNode: client}).ClientRetrieve(ctx, v0api.OfferOrder(offers[0], caddr), ref)
+	err = client.ClientRetrieve(ctx, offers[0].Order(caddr), ref)
 	if err != nil {
 		return err
 	}
