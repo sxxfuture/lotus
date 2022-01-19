@@ -228,6 +228,13 @@ var clientCommPCmd = &cli.Command{
 
 		fmt.Println("CID: ", encoder.Encode(ret.Root))
 		fmt.Println("Piece size: ", types.SizeStr(types.NewInt(uint64(ret.Size))))
+		// modified by Francis.Deng
+		// https://lotu.sh/docs/developers/large-files/
+		// lotus client commP <inputCarFilePath>
+
+		// Use the Lotus client command to output "CID","Piece size" and
+		// "raw piece size" which is applied to deal-making instead of "Piece size" col output
+		fmt.Println("Raw piece size: ", ret.Size)
 		return nil
 	},
 }
