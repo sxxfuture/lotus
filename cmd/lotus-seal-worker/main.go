@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -197,6 +198,19 @@ var runCmd = &cli.Command{
 		if cctx.IsSet("address") {
 			log.Warnf("The '--address' flag is deprecated, it has been replaced by '--listen'")
 			if err := cctx.Set("listen", cctx.String("address")); err != nil {
+				return err
+			}
+		}
+
+		// modified by Francis.Deng
+		disableFetchingAction := false
+		val, ok := os.LookupEnv("DISABLE_FETCHING_ACTION")
+		if ok {
+			disableFetchingAction, _ = strconv.ParseBool(val)
+		}
+
+		if disableFetchingAction {
+			if err := assureFlushingStorage(cctx); err != nil {
 				return err
 			}
 		}

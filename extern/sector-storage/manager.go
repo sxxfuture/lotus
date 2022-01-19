@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
+	"strconv"
 	"sync"
 
 	"github.com/google/uuid"
@@ -211,6 +213,35 @@ func schedNop(context.Context, Worker) error {
 }
 
 func (m *Manager) schedFetch(sector storage.SectorRef, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) func(context.Context, Worker) error {
+	// modified by Francis.Deng
+
+	//return func(ctx context.Context, worker Worker) error {
+	//	_, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, ft, ptype, am))
+	//	return err
+	//}
+
+	return m.planToFetch(sector, ft, ptype, am, "DISABLE_FETCHING_ACTION")
+}
+
+// Whether fetching action is disabled or not is mainly depending on the fact that environmental variable of "DISABLE_FETCHING_ACTION" is set to TRUE
+func (m *Manager) planToFetch(sector storage.SectorRef, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode, disableFetchingActionEnvVar string) func(context.Context, Worker) error {
+	disableFetchingAction := false
+	val, ok := os.LookupEnv(disableFetchingActionEnvVar)
+	if ok {
+		disableFetchingAction, _ = strconv.ParseBool(val)
+	}
+
+	if !disableFetchingAction {
+		return m.doSchedFetch(sector, ft, ptype, am)
+	} else {
+		return func(context.Context, Worker) error {
+			log.Infof("disable fetching action if env var(%s) is TRUE", disableFetchingActionEnvVar)
+			return nil
+		}
+	}
+}
+
+func (m *Manager) doSchedFetch(sector storage.SectorRef, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) func(context.Context, Worker) error {
 	return func(ctx context.Context, worker Worker) error {
 		_, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, ft, ptype, am))
 		return err
