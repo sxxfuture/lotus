@@ -606,7 +606,21 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 
-	return storageimpl.NewProvider(
+	// modified by Francis
+	// feature/f4
+	//return storageimpl.NewProvider(
+	//	net,
+	//	namespace.Wrap(ds, datastore.NewKey("/deals/provider")),
+	//	store,
+	//	dsw,
+	//	pieceStore,
+	//	dataTransfer,
+	//	spn,
+	//	address.Address(minerAddress),
+	//	storedAsk,
+	//	opt,
+	//)
+	return storageimpl.NewSupplier(
 		net,
 		namespace.Wrap(ds, datastore.NewKey("/deals/provider")),
 		store,

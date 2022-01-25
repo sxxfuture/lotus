@@ -55,6 +55,7 @@ func main() {
 		lcli.WithCategory("storage", storageCmd),
 		lcli.WithCategory("storage", sealingCmd),
 		lcli.WithCategory("retrieval", piecesCmd),
+		lcli.WithCategory("sxxf", dealsTransferFileManCmd),
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")
 	defer func() {
