@@ -4,6 +4,3 @@
 [submodule "extern/test-vectors"]
 	path = extern/test-vectors
 	url = https://github.com/filecoin-project/test-vectors.git
-[submodule "extern/go-fil-markets"]
-	path = extern/go-fil-markets
-	url = http://gitlab.office.sxxfuture.net/sxx/go-fil-markets.git
