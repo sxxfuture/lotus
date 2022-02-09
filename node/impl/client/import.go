@@ -154,3 +154,7 @@ func buildUnixFS(ctx context.Context, reader io.Reader, into bstore.Blockstore, 
 
 	return nd.Cid(), nil
 }
+
+func ForwardBuildUnixFS(ctx context.Context, reader io.Reader, into bstore.Blockstore, filestore bool) (cid.Cid, error) {
+	return buildUnixFS(ctx, reader, into, filestore)
+}

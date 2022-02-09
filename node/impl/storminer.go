@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-fil-markets/filestore"
+	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"net/http"
 	"os"
 	"sort"
@@ -899,7 +901,10 @@ func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fn
 	}
 	defer fi.Close() //nolint:errcheck
 
-	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
+	// modified by Francis
+	// feature/f4
+	//return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
+	return sm.StorageProvider.ImportDataForDeal(ctx, deal, storageimpl.PathReaderGroup{fi,filestore.Path(fname)})
 }
 
 func (sm *StorageMinerAPI) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
