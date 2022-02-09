@@ -89,6 +89,12 @@ var clientCmd = &cli.Command{
 		WithCategory("storage", clientDealStatsCmd),
 		WithCategory("storage", clientInspectDealCmd),
 		WithCategory("data", clientImportCmd),
+		// updated by Francis
+		// feature/f4 locally calculate valuable data root,generate a car file,calculate piece cid
+		//            in order to partly break daemon's tight coupling
+		WithCategory("sxxf", localClientImportCmd),
+		WithCategory("sxxf", localClientCarGenCmd),
+		WithCategory("sxxf", localClientCommPCmd),
 		WithCategory("data", clientDropCmd),
 		WithCategory("data", clientLocalCmd),
 		WithCategory("data", clientStat),
