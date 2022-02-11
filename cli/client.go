@@ -360,6 +360,10 @@ The minimum value is 518400 (6 months).`,
 			Name:  "provider-collateral",
 			Usage: "specify the requested provider collateral the miner should put up",
 		},
+		&cli.StringFlag{
+			Name:  "miner-by-peerid",
+			Usage: "sxxf:: specify the miner(by peerid) in which the offline deal is executed",
+		},
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
@@ -455,6 +459,13 @@ The minimum value is 518400 (6 months).`,
 			ref.TransferType = storagemarket.TTManual
 		}
 
+		// modified by Francis
+		// feature/f5
+		minerByPeerId := peer.ID("")
+		if ByPeerId := cctx.String("miner-by-peerid"); ByPeerId != "" {
+			minerByPeerId = peer.ID(ByPeerId)
+		}
+
 		// Check if the address is a verified client
 		dcap, err := api.StateVerifiedClientStatus(ctx, a, types.EmptyTSK)
 		if err != nil {
@@ -486,6 +497,7 @@ The minimum value is 518400 (6 months).`,
 			FastRetrieval:      cctx.Bool("fast-retrieval"),
 			VerifiedDeal:       isVerified,
 			ProviderCollateral: provCol,
+			MinerPeerId:        minerByPeerId,
 		}
 
 		var proposal *cid.Cid

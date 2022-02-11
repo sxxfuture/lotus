@@ -172,6 +172,13 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
 
+	// modified by Francis
+	// feature/f5
+	offlineMinerPeerId := *mi.PeerId
+	if len(params.MinerPeerId) != 0 {
+		offlineMinerPeerId = params.MinerPeerId
+	}
+
 	md, err := a.StateMinerProvingDeadline(ctx, params.Miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner's deadline info: %w", err)
@@ -266,11 +273,13 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		Proposal:        *dealProposal,
 		ClientSignature: *dealProposalSig,
 	}
+	log.Infof("The host:%+v attempts to build a connection with minerId:%+v over minerId:%+v", a.Host,offlineMinerPeerId,*mi.PeerId)
 	dStream, err := network.NewFromLibp2pHost(a.Host,
 		// params duplicated from .../node/modules/client.go
 		// https://github.com/filecoin-project/lotus/pull/5961#discussion_r629768011
 		network.RetryParameters(time.Second, 5*time.Minute, 15, 5),
-	).NewDealStream(ctx, *mi.PeerId)
+	//).NewDealStream(ctx, *mi.PeerId)
+	).NewDealStream(ctx, offlineMinerPeerId)
 	if err != nil {
 		return nil, xerrors.Errorf("opening dealstream to %s/%s failed: %w", params.Miner, *mi.PeerId, err)
 	}
