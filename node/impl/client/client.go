@@ -175,7 +175,8 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 	// modified by Francis
 	// feature/f5
 	offlineMinerPeerId := *mi.PeerId
-	if len(params.MinerPeerId) != 0 {
+	//if len(params.MinerPeerId) != 0 {
+	if params.MinerPeerId != peer.ID("SETME") {
 		offlineMinerPeerId = params.MinerPeerId
 	}
 

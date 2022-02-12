@@ -461,12 +461,13 @@ The minimum value is 518400 (6 months).`,
 
 		// modified by Francis
 		// feature/f5
-		minerByPeerId := peer.ID("")
+		minerByPeerId := peer.ID("SETME")
 		if ByPeerId := cctx.String("miner-by-peerid"); ByPeerId != "" {
-			minerByPeerId, err = peer.Decode(ByPeerId)
+			bpId, err := peer.Decode(ByPeerId)
 			if err != nil {
 				return err
 			}
+			minerByPeerId = bpId
 		}
 
 		// Check if the address is a verified client
