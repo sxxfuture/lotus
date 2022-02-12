@@ -273,7 +273,7 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		Proposal:        *dealProposal,
 		ClientSignature: *dealProposalSig,
 	}
-	log.Infof("The host:%+v attempts to build a connection with minerId:%+v over minerId:%+v", a.Host,offlineMinerPeerId,*mi.PeerId)
+	log.Infof("The host<<pid:%+v,addrs:%+v>> attempts to build a connection with desired minerPid:%+v OVER picked minerPid:%+v", a.Host.ID(),a.Host.Addrs(),offlineMinerPeerId,*mi.PeerId)
 	dStream, err := network.NewFromLibp2pHost(a.Host,
 		// params duplicated from .../node/modules/client.go
 		// https://github.com/filecoin-project/lotus/pull/5961#discussion_r629768011
