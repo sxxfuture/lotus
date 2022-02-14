@@ -84,7 +84,7 @@ const dealStartBufferHours uint64 = 8 * 24
 const DefaultDAGStoreDir = "dagstore"
 
 // to represent nil peer identity
-const NilPeerId = peer.ID("QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N")
+const NilPeerId = peer.ID("12D3KooWFHsKbPXYgscgE49GTqg5Qzcnhre8awdgsQeF8Francis")
 
 type API struct {
 	fx.In
