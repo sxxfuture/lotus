@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/node/impl/client"
 	"io"
 	"math"
 	"math/rand"
@@ -461,7 +462,7 @@ The minimum value is 518400 (6 months).`,
 
 		// modified by Francis
 		// feature/f5
-		minerByPeerId := peer.ID("SETME")
+		minerByPeerId := client.NilPeerId
 		if ByPeerId := cctx.String("miner-by-peerid"); ByPeerId != "" {
 			bpId, err := peer.Decode(ByPeerId)
 			if err != nil {

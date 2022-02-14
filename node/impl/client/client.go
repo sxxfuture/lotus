@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -81,6 +82,9 @@ var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 // 8 days ~=  SealDuration + PreCommit + MaxProveCommitDuration + 8 hour buffer
 const dealStartBufferHours uint64 = 8 * 24
 const DefaultDAGStoreDir = "dagstore"
+
+// to represent nil peer identity
+const NilPeerId = peer.ID("QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N")
 
 type API struct {
 	fx.In
@@ -176,7 +180,7 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 	// feature/f5
 	offlineMinerPeerId := *mi.PeerId
 	//if len(params.MinerPeerId) != 0 {
-	if params.MinerPeerId != peer.ID("SETME") {
+	if strings.Compare(string(params.MinerPeerId), string(NilPeerId)) != 0 { // specified miner peerId
 		offlineMinerPeerId = params.MinerPeerId
 	}
 
