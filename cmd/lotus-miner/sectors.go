@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
@@ -66,6 +67,14 @@ var sectorsCmd = &cli.Command{
 var sectorsPledgeCmd = &cli.Command{
 	Name:  "pledge",
 	Usage: "store random data in a sector",
+	// add by pan
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "worker",
+			Value: "",
+		},
+	},
+	// end
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -78,6 +87,20 @@ var sectorsPledgeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		// add by pan
+		worker := cctx.String("worker")
+		if worker != "" {
+			minerpath := os.Getenv("LOTUS_MINER_PATH")
+			path := minerpath + "/sectors"
+			_, err = os.Stat(path)
+			if os.IsNotExist(err) {
+				err = os.Mkdir(path, 0755)
+			}
+			path = path + "/" + storiface.SectorName(id)
+			err = os.WriteFile(path, []byte(worker), 0666)
+		}
+		// end
 
 		fmt.Println("Created CC sector: ", id.Number)
 

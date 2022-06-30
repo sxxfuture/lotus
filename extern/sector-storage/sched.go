@@ -4,6 +4,8 @@ import (
 	"context"
 	"math"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -386,6 +388,20 @@ func (sh *scheduler) trySched() {
 
 			task.indexHeap = sqi
 			for wnd, windowRequest := range sh.openWindows {
+
+				// add by pan
+				var skip = false
+
+				if task.taskType == sealtasks.TTAddPiece || task.taskType == sealtasks.TTPreCommit1 || task.taskType == sealtasks.TTPreCommit2 {
+					i := sh.findWorker(task)
+					if i > -1 {
+						wnd = i
+						windowRequest = sh.openWindows[i]
+						skip = true
+					}
+				}
+				// end
+
 				worker, ok := sh.workers[windowRequest.worker]
 				if !ok {
 					log.Errorf("worker referenced by windowRequest not found (worker: %s)", windowRequest.worker)
@@ -418,6 +434,12 @@ func (sh *scheduler) trySched() {
 				}
 
 				acceptableWindows[sqi] = append(acceptableWindows[sqi], wnd)
+
+				// add by pan
+				if skip == true {
+					break
+				}
+				// end
 			}
 
 			if len(acceptableWindows[sqi]) == 0 {
@@ -610,3 +632,86 @@ func (sh *scheduler) Close(ctx context.Context) error {
 	}
 	return nil
 }
+
+// add by pan
+func (sh *scheduler) findWorker(task *workerRequest) int {
+	i := -1
+	if task.taskType == sealtasks.TTPreCommit2 {
+		i = sh.findStorageWorker(task)
+	} else {
+		i = sh.findFileWorker(task)
+	}
+	return i
+}
+
+func (sh *scheduler) findStorageWorker(task *workerRequest) int {
+	ctx := task.ctx
+	sel, ok := task.sel.(*existingSelector)
+	if !ok {
+		return -1
+	}
+	ssize, err := task.sector.ProofType.SectorSize()
+	if err != nil {
+		return -1
+	}
+	best, err := sel.index.StorageFindSector(ctx, task.sector.ID, sel.alloc, ssize, false)
+	if err != nil {
+		return -1
+	}
+	if len(best) == 0 {
+		return -1
+	}
+	for wnd1, windowRequest := range sh.openWindows {
+		worker, ok := sh.workers[windowRequest.worker]
+		if !ok {
+			continue
+		}
+		tasks, err := worker.workerRpc.TaskTypes(ctx)
+		if err != nil {
+			continue
+		}
+		if _, supported := tasks[task.taskType]; !supported {
+			continue
+		}
+		paths, err := worker.workerRpc.Paths(ctx)
+		if err != nil {
+			continue
+		}
+		for _, path := range paths {
+			for l := 0; l < len(best); l++ {
+				info := best[l]
+				if info.Weight != 0 && path.ID == info.ID {
+					return wnd1
+				}
+			}
+		}
+	}
+	return -1
+}
+
+func (sh *scheduler) findFileWorker(task *workerRequest) int {
+	minerpath := os.Getenv("LOTUS_MINER_PATH")
+	path := filepath.Join(minerpath, "./sectors/", storiface.SectorName(task.sector.ID))
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return -1
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return -1
+	}
+	workerid := string(data)
+	for wnd1, windowRequest := range sh.openWindows {
+		worker, ok := sh.workers[windowRequest.worker]
+		if !ok {
+			continue
+		}
+		if workerid == worker.info.Hostname {
+			return wnd1
+		}
+	}
+
+	return -1
+}
+
+// end
