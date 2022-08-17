@@ -9,6 +9,7 @@
   * [ActorAddress](#ActorAddress)
   * [ActorAddressConfig](#ActorAddressConfig)
   * [ActorSectorSize](#ActorSectorSize)
+  * [ActorWithdrawBalance](#ActorWithdrawBalance)
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
   * [AuthVerify](#AuthVerify)
@@ -127,6 +128,7 @@
   * [RuntimeSubsystems](#RuntimeSubsystems)
 * [Sealing](#Sealing)
   * [SealingAbort](#SealingAbort)
+  * [SealingRemoveRequest](#SealingRemoveRequest)
   * [SealingSchedDiag](#SealingSchedDiag)
 * [Sector](#Sector)
   * [SectorAbortUpgrade](#SectorAbortUpgrade)
@@ -160,6 +162,8 @@
   * [StorageAuthVerify](#StorageAuthVerify)
   * [StorageBestAlloc](#StorageBestAlloc)
   * [StorageDeclareSector](#StorageDeclareSector)
+  * [StorageDetach](#StorageDetach)
+  * [StorageDetachLocal](#StorageDetachLocal)
   * [StorageDropSector](#StorageDropSector)
   * [StorageFindSector](#StorageFindSector)
   * [StorageGetLocks](#StorageGetLocks)
@@ -167,6 +171,7 @@
   * [StorageList](#StorageList)
   * [StorageLocal](#StorageLocal)
   * [StorageLock](#StorageLock)
+  * [StorageRedeclareLocal](#StorageRedeclareLocal)
   * [StorageReportHealth](#StorageReportHealth)
   * [StorageStat](#StorageStat)
   * [StorageTryLock](#StorageTryLock)
@@ -291,6 +296,28 @@ Inputs:
 ```
 
 Response: `34359738368`
+
+### ActorWithdrawBalance
+WithdrawBalance allows to withdraw balance from miner actor to owner address
+Specify amount as "0" to withdraw full balance. This method returns a message CID
+and does not wait for message execution
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "0"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ## Auth
 
@@ -2726,6 +2753,21 @@ Inputs:
 
 Response: `{}`
 
+### SealingRemoveRequest
+SealingSchedRemove removes a request from sealing pipeline
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "07070707-0707-0707-0707-070707070707"
+]
+```
+
+Response: `{}`
+
 ### SealingSchedDiag
 SealingSchedDiag dumps internal sealing scheduler state
 
@@ -3398,6 +3440,35 @@ Inputs:
 
 Response: `{}`
 
+### StorageDetach
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
+  "string value"
+]
+```
+
+Response: `{}`
+
+### StorageDetachLocal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
 ### StorageDropSector
 
 
@@ -3589,6 +3660,21 @@ Inputs:
   },
   1,
   1
+]
+```
+
+Response: `{}`
+
+### StorageRedeclareLocal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "1399aa04-2625-44b1-bad4-bd07b59b22c4",
+  true
 ]
 ```
 

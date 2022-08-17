@@ -6195,7 +6195,7 @@ Response:
 ### StateReplay
 StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 
-If a tipset key is provided, and a replacing message is found on chain,
+If a tipset key is provided, and a replacing message is not found on chain,
 the method will return an error saying that the message wasn't found
 
 If no tipset key is provided, the appropriate tipset is looked up, and if
@@ -6687,7 +6687,7 @@ Inputs:
 Response: `"0"`
 
 ### StateVerifiedRegistryRootKey
-StateVerifiedClientStatus returns the address of the Verified Registry's root key
+StateVerifiedRegistryRootKey returns the address of the Verified Registry's root key
 
 
 Perms: read

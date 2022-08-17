@@ -48,6 +48,11 @@ type StorageMiner interface {
 	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error) //perm:read
 	ActorAddressConfig(ctx context.Context) (AddressConfig, error)            //perm:read
 
+	// WithdrawBalance allows to withdraw balance from miner actor to owner address
+	// Specify amount as "0" to withdraw full balance. This method returns a message CID
+	// and does not wait for message execution
+	ActorWithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) //perm:admin
+
 	MiningBase(context.Context) (*types.TipSet, error) //perm:read
 
 	ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) //perm:admin
@@ -145,9 +150,12 @@ type StorageMiner interface {
 	// SealingSchedDiag dumps internal sealing scheduler state
 	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) //perm:admin
 	SealingAbort(ctx context.Context, call storiface.CallID) error           //perm:admin
+	//SealingSchedRemove removes a request from sealing pipeline
+	SealingRemoveRequest(ctx context.Context, schedId uuid.UUID) error //perm:admin
 
 	// paths.SectorIndex
 	StorageAttach(context.Context, storiface.StorageInfo, fsutil.FsStat) error                                                         //perm:admin
+	StorageDetach(ctx context.Context, id storiface.ID, url string) error                                                              //perm:admin
 	StorageInfo(context.Context, storiface.ID) (storiface.StorageInfo, error)                                                          //perm:admin
 	StorageReportHealth(context.Context, storiface.ID, storiface.HealthReport) error                                                   //perm:admin
 	StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error //perm:admin
@@ -174,6 +182,10 @@ type StorageMiner interface {
 	StorageStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) //perm:admin
 
 	StorageAuthVerify(ctx context.Context, token string) ([]auth.Permission, error) //perm:read
+
+	StorageAddLocal(ctx context.Context, path string) error                              //perm:admin
+	StorageDetachLocal(ctx context.Context, path string) error                           //perm:admin
+	StorageRedeclareLocal(ctx context.Context, id *storiface.ID, dropMissing bool) error //perm:admin
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                        //perm:write
 	MarketListDeals(ctx context.Context) ([]*MarketDeal, error)                                                                                                                          //perm:read
@@ -271,8 +283,6 @@ type StorageMiner interface {
 	DealsSetConsiderVerifiedStorageDeals(context.Context, bool) error            //perm:admin
 	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)           //perm:admin
 	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error          //perm:admin
-
-	StorageAddLocal(ctx context.Context, path string) error //perm:admin
 
 	PiecesListPieces(ctx context.Context) ([]cid.Cid, error)                                 //perm:read
 	PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error)                               //perm:read
