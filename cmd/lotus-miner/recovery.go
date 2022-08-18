@@ -8,14 +8,15 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/recovery"
+	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
+	"io/ioutil"
 
-	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
-
-	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var sectorsRecoveryCmd = &cli.Command{
@@ -23,8 +24,8 @@ var sectorsRecoveryCmd = &cli.Command{
 	Usage: "Attempt to restore a sector consisting of data",
 	Subcommands: []*cli.Command{
 		recoveryGetSectorOnChainCmd,
-		recoveryRestoreSectorCmd,
 		recoveryFetchDataCmd,
+		recoveryRestoreSectorCmd,
 	},
 }
 
@@ -40,6 +41,13 @@ var recoveryGetSectorOnChainCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "miner",
 			Usage:    "miner address, i.e. f01450",
+			Required: true,
+		},
+		&cli.BoolFlag{
+			Name:     "out",
+			Aliases: []string{"o"},
+			Usage:    "output a sector meta file",
+			Value:   false,
 			Required: true,
 		},
 	},
@@ -70,10 +78,23 @@ var recoveryGetSectorOnChainCmd = &cli.Command{
 		}
 		fmt.Println(string(data))
 
+		if cctx.Bool("out") {
+			of, err := getSectorMetaFile(maddr, sector)
+			if err != nil {
+				return err
+			}
+
+			if err := ioutil.WriteFile(of, data, 0644); err != nil {
+				return err
+			}
+		}
+
 
 		return nil
 	},
 }
+
+
 
 var recoveryRestoreSectorCmd = &cli.Command{
 	Name:  "restore-sector",
@@ -96,18 +117,27 @@ var recoveryRestoreSectorCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:  "work-area",
+			Name:  "sector-repo",
 			Usage: "a path where sector is processed",
 			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cliutil.ReqContext(cctx)
+
 		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
 		if err != nil {
 			return fmt.Errorf("failed to parse sector size: %w", err)
 		}
-		fmt.Println("ssize: ", ssize)
+		spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), build.NewestNetworkVersion)
+		if err != nil {
+			return fmt.Errorf("failed to parse sector size: %w", err)
+		}
+		sectorSize, err := spt.SectorSize()
+		if err != nil {
+			return fmt.Errorf("failed to parse sector size: %w", err)
+		}
+		log.Info(sectorSize)
 
 		sector := cctx.Uint64("sector")
 
@@ -115,6 +145,9 @@ var recoveryRestoreSectorCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("miner address error: %w", err)
 		}
+
+		workRepo := cctx.String("sector-repo")
+		log.Info(workRepo)
 
 		fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -141,39 +174,79 @@ var recoveryRestoreSectorCmd = &cli.Command{
 
 var recoveryFetchDataCmd = &cli.Command{
 	Name:      "fetch-data",
-	ArgsUsage: "[file destination]",
+	ArgsUsage: "[destination file]",
 	Usage:     "Fetch a data from sector",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:        "color",
-			Usage:       "use color in display output",
-			DefaultText: "depends on output being a TTY",
+		&cli.StringFlag{
+			Name:  "sector-size",
+			Value: "32GiB",
+			Usage: "size of the sectors in bytes, i.e. 2KiB",
+		},
+		&cli.Int64Flag{
+			Name:  "sector",
+			Usage: "sector number, i.e. 3880",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "miner",
+			Usage:    "miner address, i.e. f01450",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "sector-repo",
+			Usage: "a path where sector is processed",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.IsSet("color") {
-			color.NoColor = !cctx.Bool("color")
-		}
+		ctx := cliutil.ReqContext(cctx)
 
-		if cctx.NArg() != 1 {
-			return fmt.Errorf("must provide a single shard key")
-		}
-
-		marketsAPI, closer, err := lcli.GetMarketsAPI(cctx)
+		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse sector size: %w", err)
+		}
+		spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), build.NewestNetworkVersion)
+		if err != nil {
+			return fmt.Errorf("failed to parse sector size: %w", err)
+		}
+		sectorSize, err := spt.SectorSize()
+		if err != nil {
+			return fmt.Errorf("failed to parse sector size: %w", err)
+		}
+		log.Info(sectorSize)
+
+		sector := cctx.Uint64("sector")
+
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return xerrors.Errorf("miner address error: %w", err)
+		}
+
+		workRepo := cctx.String("sector-repo")
+		log.Info(workRepo)
+
+		fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("GetFullNodeAPI error:", err)
 		}
 		defer closer()
 
-		ctx := lcli.ReqContext(cctx)
+		if cctx.NArg() != 1 {
+			return fmt.Errorf("must specify a file path to contain fetched data")
+		}
+		filePath := cctx.Args().First()
 
-		shardKey := cctx.Args().First()
-		err = marketsAPI.DagstoreRegisterShard(ctx, shardKey)
+		si,err := getSectorOnChain(ctx,fullNodeApi,maddr,sector)
 		if err != nil {
-			return err
+			return xerrors.Errorf("sector on chain error: %w", err)
 		}
 
-		fmt.Println("Registered shard " + shardKey)
+		log.Info(filePath,si)
+
+
+		//ss := recovery.NewSectorSealer(workRepo)
+
+
 		return nil
 	},
 }
@@ -199,3 +272,7 @@ func getSectorOnChain(ctx context.Context,fullNodeApi v0api.FullNode,maddr addre
 	return si,nil
 }
 
+
+func getSectorMetaFile(maddr address.Address,sector uint64) (string,error) {
+	return homedir.Expand(maddr.String() + "-" + fmt.Sprintf("%d", sector) + "-meta-" + ".json")
+}
