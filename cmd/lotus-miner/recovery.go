@@ -12,9 +12,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/recovery"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"io/ioutil"
+	"os"
 
 	"github.com/urfave/cli/v2"
 )
@@ -23,9 +25,54 @@ var sectorsRecoveryCmd = &cli.Command{
 	Name:  "recovery",
 	Usage: "Attempt to restore a sector consisting of data",
 	Subcommands: []*cli.Command{
+		recoveryProbeFileCmd,
 		recoveryGetSectorOnChainCmd,
 		recoveryFetchDataCmd,
 		recoveryRestoreSectorCmd,
+	},
+}
+
+var recoveryProbeFileCmd = &cli.Command{
+	Name:  "probe-file",
+	Usage: `utility tool used as raw file probe to get enough information`,
+	ArgsUsage: "[raw file path]",
+	Flags: []cli.Flag{
+
+	},
+	Action: func(cctx *cli.Context) error {
+		//ctx := cliutil.ReqContext(cctx)
+
+		if cctx.NArg() != 1{
+			return xerrors.Errorf("must specify one input file")
+		}
+		path := cctx.Args().First()
+		file,err := os.Open(path)
+		if err!= nil {
+			return xerrors.Errorf("open file error: %w",err)
+		}
+		defer file.Close()
+
+		fi,err := file.Stat()
+		if err!= nil {
+			return xerrors.Errorf("read file-stat error: %w",err)
+		}
+		size := fi.Size()
+		pinfo,err :=recovery.GetPieceInfo(file)
+		if err!= nil {
+			return xerrors.Errorf("get piece info error: %w",err)
+		}
+
+		encoder, err := GetCidEncoder(cctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("CID: ", encoder.Encode(pinfo.Root))
+		fmt.Println("Piece size(in bytes): ", pinfo.Size)
+		fmt.Println("Raw size(in bytes): ", size)
+
+
+		return nil
 	},
 }
 
@@ -44,11 +91,10 @@ var recoveryGetSectorOnChainCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.BoolFlag{
-			Name:     "out",
-			Aliases: []string{"o"},
+			Name:     "meta",
+			Aliases: []string{"m"},
 			Usage:    "output a sector meta file",
 			Value:   false,
-			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -78,7 +124,7 @@ var recoveryGetSectorOnChainCmd = &cli.Command{
 		}
 		fmt.Println(string(data))
 
-		if cctx.Bool("out") {
+		if cctx.Bool("meta") {
 			of, err := getSectorMetaFile(maddr, sector)
 			if err != nil {
 				return err
@@ -117,8 +163,8 @@ var recoveryRestoreSectorCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:  "sector-repo",
-			Usage: "a path where sector is processed",
+			Name:  "sector-storage",
+			Usage: "sector storage path",
 			Required: true,
 		},
 	},
@@ -146,7 +192,7 @@ var recoveryRestoreSectorCmd = &cli.Command{
 			return xerrors.Errorf("miner address error: %w", err)
 		}
 
-		workRepo := cctx.String("sector-repo")
+		workRepo := cctx.String("sector-storage")
 		log.Info(workRepo)
 
 		fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
@@ -193,12 +239,29 @@ var recoveryFetchDataCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:  "sector-repo",
-			Usage: "a path where sector is processed",
+			Name:  "sector-storage",
+			Usage: "sector storage path",
 			Required: true,
+		},
+		&cli.Int64Flag{
+			Name:  "file-size",
+			Usage: "raw file size in bytes",
+			Required: true,
+		},
+		&cli.Int64Flag{
+			Name:  "piece-size",
+			Usage: "calculated piece size in bytes",
+			Required: true,
+		},
+		&cli.BoolFlag{
+			Name:     "meta",
+			Aliases: []string{"m"},
+			Usage:    "use a sector meta file locally",
+			Value:   false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		var si *recovery.SectorInfo
 		ctx := cliutil.ReqContext(cctx)
 
 		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
@@ -221,30 +284,60 @@ var recoveryFetchDataCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("miner address error: %w", err)
 		}
+		mid,err :=address.IDFromAddress(maddr)
+		if err != nil {
+			return xerrors.Errorf("miner id address error: %w", err)
+		}
 
-		workRepo := cctx.String("sector-repo")
+		workRepo := cctx.String("sector-storage")
 		log.Info(workRepo)
 
-		fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("GetFullNodeAPI error:", err)
+		if !cctx.Bool("meta") {
+			fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
+			if err != nil {
+				return xerrors.Errorf("GetFullNodeAPI error:", err)
+			}
+			defer closer()
+
+			si,err = getSectorOnChain(ctx,fullNodeApi,maddr,sector)
+			if err != nil {
+				return xerrors.Errorf("sector on chain error: %w", err)
+			}
+		} else {
+			metadata, err := getSectorMetaFile(maddr, sector)
+			if err != nil {
+				return err
+			}
+
+			b, err := ioutil.ReadFile(metadata)
+			if err != nil {
+				return xerrors.Errorf("reading sector metadata: %w", err)
+			}
+
+			if err := json.Unmarshal(b, &si); err != nil {
+				return xerrors.Errorf("unmarshalling sectors metadata: %w", err)
+			}
 		}
-		defer closer()
 
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must specify a file path to contain fetched data")
+			return xerrors.Errorf("must specify a file path to contain fetched data")
 		}
-		filePath := cctx.Args().First()
+		desFilePath := cctx.Args().First()
 
-		si,err := getSectorOnChain(ctx,fullNodeApi,maddr,sector)
-		if err != nil {
-			return xerrors.Errorf("sector on chain error: %w", err)
+		sref := storiface.SectorRef{
+			ID:        abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(sector)},
+			ProofType: spt,
 		}
 
-		log.Info(filePath,si)
+		fileSize := cctx.Uint64("file-size")
+		pieceSize := cctx.Uint64("piece-size")
 
+		ss := recovery.NewSectorSealer(workRepo)
+		buf,err := ss.FetchBytes(ctx, sref,fileSize, abi.UnpaddedPieceSize(pieceSize), abi.SealRandomness(si.Ticket),func(){})
 
-		//ss := recovery.NewSectorSealer(workRepo)
+		if err := ioutil.WriteFile(desFilePath, buf.Bytes(), 0644); err != nil {
+			return xerrors.Errorf("write buf to the destination error: %w", err)
+		}
 
 
 		return nil
@@ -274,5 +367,5 @@ func getSectorOnChain(ctx context.Context,fullNodeApi v0api.FullNode,maddr addre
 
 
 func getSectorMetaFile(maddr address.Address,sector uint64) (string,error) {
-	return homedir.Expand(maddr.String() + "-" + fmt.Sprintf("%d", sector) + "-meta-" + ".json")
+	return homedir.Expand(maddr.String() + "-" + fmt.Sprintf("%d", sector) + "-meta" + ".json")
 }

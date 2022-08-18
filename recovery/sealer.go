@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-commp-utils/writer"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
@@ -114,7 +112,7 @@ func (ssb *SectorSealer) AddPiece(ctx context.Context, id storiface.SectorRef, s
 	)
 	ssize, err := id.ProofType.SectorSize()
 
-	pinfo,err := getPieceInfo(rs)
+	pinfo,err := GetPieceInfo(rs)
 	if err != nil {
 		return err
 	}
@@ -388,20 +386,3 @@ func fillersFromRem(in abi.UnpaddedPieceSize) ([]abi.UnpaddedPieceSize, error) {
 	return out, nil
 }
 
-func getPieceInfo(rdr io.Reader) (*api.CommPRet, error) {
-	w := &writer.Writer{}
-	_, err := io.CopyBuffer(w, rdr, make([]byte, writer.CommPBuf))
-	if err != nil {
-		return nil, xerrors.Errorf("copy into commp writer: %w", err)
-	}
-
-	commp, err := w.Sum()
-	if err != nil {
-		return nil, xerrors.Errorf("computing commP failed: %w", err)
-	}
-
-	return &api.CommPRet{
-		Root: commp.PieceCID,
-		Size: commp.PieceSize.Unpadded(),
-	}, nil
-}
