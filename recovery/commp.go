@@ -3,6 +3,7 @@ package recovery
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/filecoin-ffi/cgo"
 	"github.com/filecoin-project/go-commp-utils/writer"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -64,6 +65,28 @@ func MoveStorage(ctx context.Context, sector storiface.SectorRef, src string, de
 	}
 
 	return nil
+}
+
+func SetupLogger() (*bytes.Buffer,error) {
+	_ = os.Setenv("RUST_LOG", "info")
+
+	var bb bytes.Buffer
+	r, w, err := os.Pipe()
+	if err != nil {
+		return nil,err
+	}
+
+	go func() {
+		_, _ = io.Copy(&bb, r)
+		runtime.KeepAlive(w)
+	}()
+
+	err = cgo.InitLogFd(int32(w.Fd()))
+	if err != nil {
+		return nil,err
+	}
+
+	return &bb,nil
 }
 
 func move(from, to string) error {
