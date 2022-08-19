@@ -69,7 +69,7 @@ var recoveryProbeFileCmd = &cli.Command{
 
 		fmt.Println("CID: ", encoder.Encode(pinfo.Root))
 		fmt.Println("Piece size(in bytes): ", pinfo.Size)
-		fmt.Println("Raw size(in bytes): ", size)
+		fmt.Println("  Raw size(in bytes): ", size)
 
 
 		return nil
@@ -167,8 +167,15 @@ var recoveryRestoreSectorCmd = &cli.Command{
 			Usage: "sector storage path",
 			Required: true,
 		},
+		&cli.BoolFlag{
+			Name:     "meta",
+			Aliases: []string{"m"},
+			Usage:    "use a sector meta file locally",
+			Value:   false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		var si *recovery.SectorInfo
 		ctx := cliutil.ReqContext(cctx)
 
 		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
@@ -191,28 +198,73 @@ var recoveryRestoreSectorCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("miner address error: %w", err)
 		}
+		mid,err :=address.IDFromAddress(maddr)
+		if err != nil {
+			return xerrors.Errorf("miner id address error: %w", err)
+		}
 
 		workRepo := cctx.String("sector-storage")
 		log.Info(workRepo)
 
-		fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("GetFullNodeAPI error:", err)
+		sref := storiface.SectorRef{
+			ID:        abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(sector)},
+			ProofType: spt,
 		}
-		defer closer()
+
+		if !cctx.Bool("meta") {
+			fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
+			if err != nil {
+				return xerrors.Errorf("GetFullNodeAPI error:", err)
+			}
+			defer closer()
+
+			si,err = getSectorOnChain(ctx,fullNodeApi,maddr,sector)
+			if err != nil {
+				return xerrors.Errorf("sector on chain error: %w", err)
+			}
+		} else {
+			metadata, err := getSectorMetaFile(maddr, sector)
+			if err != nil {
+				return err
+			}
+
+			b, err := ioutil.ReadFile(metadata)
+			if err != nil {
+				return xerrors.Errorf("reading sector metadata: %w", err)
+			}
+
+			if err := json.Unmarshal(b, &si); err != nil {
+				return xerrors.Errorf("unmarshalling sectors metadata: %w", err)
+			}
+		}
 
 		if cctx.NArg() != 1 {
 			return fmt.Errorf("must specify a raw file path to seal")
 		}
 		filePath := cctx.Args().First()
 
-		si,err := getSectorOnChain(ctx,fullNodeApi,maddr,sector)
+		f,err := os.Open(filePath)
 		if err != nil {
-			return xerrors.Errorf("sector on chain error: %w", err)
+			return xerrors.Errorf("opening file error: %w", err)
+		}
+		fi,_ := f.Stat()
+		defer f.Close()
+
+		ss := recovery.NewSectorSealer(workRepo)
+		err = ss.AddPiece(ctx, sref, abi.UnpaddedPieceSize(fi.Size()),f)
+		if err!= nil {
+			return xerrors.Errorf("adding piece error: %w", err)
 		}
 
-		log.Info(filePath,si)
+		err = ss.Pack(ctx)
+		if err != nil {
+			return xerrors.Errorf("packing error: %w", err)
+		}
 
+		err = ss.PreCommit(ctx, abi.SealRandomness(si.Ticket))
+		if err != nil {
+			return xerrors.Errorf("precommitting error: %w", err)
+		}
 
 		return nil
 	},
