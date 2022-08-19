@@ -160,6 +160,13 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 }
 
 func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) error {
+	// add by xiao
+	switch sector.State {
+	case SnapDealsWaitDeals, SnapDealsAddPiece, SnapDealsPacking, UpdateReplica, ProveReplicaUpdate, SubmitReplicaUpdate, ReplicaUpdateWait, FinalizeReplicaUpdate, UpdateActivating, ReleaseSectorKey:
+		context.WithValue(ctx.Context(), "data_type", "real") //write
+		//dataTypeValue, ok := ctx.Value("data_type").(string) //read
+	}
+	//end
 	ssize, err := sector.SectorType.SectorSize()
 	if err != nil {
 		return err

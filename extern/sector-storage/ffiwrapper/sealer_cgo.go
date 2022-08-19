@@ -10,6 +10,8 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/detailyang/go-fallocate"
+	"github.com/ipfs/go-cid"
 	"io"
 	"math/bits"
 	"os"
@@ -18,10 +20,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/detailyang/go-fallocate"
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
@@ -168,12 +168,20 @@ func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 }
 
 func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, file storage.Data) (abi.PieceInfo, error) {
-
 	// add by xiao
-	if mypieceInfo, err := sb.myAddPiece(ctx, sector, pieceSize); err == nil {
-		return mypieceInfo, nil
-	} else {
-		log.Warn(err)
+	isRealData := false
+	dataTypeValue, ok := ctx.Value("data_type").(string)
+	if ok {
+		if dataTypeValue == "real" {
+			isRealData = true
+		}
+	}
+	if !isRealData {
+		if mypieceInfo, err := sb.myAddPiece(ctx, sector, pieceSize); err == nil {
+			return mypieceInfo, nil
+		} else {
+			log.Warn(err)
+		}
 	}
 	// end
 
@@ -359,7 +367,9 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 	}
 
 	// add by xiao
-	sb.createTemplateFile(stagedPath.Unsealed, pieceSize, pieceCID)
+	if !isRealData {
+		sb.createTemplateFile(stagedPath.Unsealed, pieceSize, pieceCID)
+	}
 	//end
 
 	return abi.PieceInfo{
