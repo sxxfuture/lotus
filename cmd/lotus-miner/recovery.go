@@ -7,9 +7,11 @@ import (
 	"github.com/docker/go-units"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/recovery"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -392,6 +394,13 @@ var recoveryFetchDataCmd = &cli.Command{
 			}
 			defer closer()
 
+			storageMinerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+			if err != nil {
+				return xerrors.Errorf("GetStorageMinerAPI error:", err)
+			}
+			defer closer()
+
+
 			si,err = getSectorOnChain(ctx,fullNodeApi,maddr,sector)
 			if err != nil {
 				return xerrors.Errorf("sector on chain error: %w", err)
@@ -445,17 +454,26 @@ var recoveryFetchDataCmd = &cli.Command{
 	},
 }
 
-func getSectorOnChain(ctx context.Context,fullNodeApi v0api.FullNode,maddr address.Address, sector uint64) (*recovery.SectorInfo,error) {
+func getSectorOnChain(ctx context.Context,fullNodeApi v0api.FullNode, storageMinerApi api.StorageMiner,maddr address.Address, sector uint64) (*recovery.SectorInfo,error) {
 	ts, sectorPreCommitOnChainInfo, err := recovery.GetSectorCommitInfoOnChain(ctx, fullNodeApi, maddr, abi.SectorNumber(sector))
 	if err != nil {
 		return nil,xerrors.Errorf("Getting sector (%d) precommit info error: %v ", sector, err)
+	}
+
+	siom,err := recovery.GetSectorInfoOnMiner(ctx,storageMinerApi,abi.SectorNumber(sector))
+	if err != nil {
+		return nil,xerrors.Errorf("Getting sector (%d) info from miner error: %v ", sector, err)
 	}
 
 	si := &recovery.SectorInfo{
 		SectorNumber: abi.SectorNumber(sector),
 		SealProof:    sectorPreCommitOnChainInfo.Info.SealProof,
 		SealedCID:    sectorPreCommitOnChainInfo.Info.SealedCID,
+		CommD:        *siom.CommD,
+		CommR:        *siom.CommR,
 	}
+
+
 
 	ticket, err := recovery.GetSectorTicketOnChain(ctx, fullNodeApi, maddr, ts, sectorPreCommitOnChainInfo)
 	if err != nil {

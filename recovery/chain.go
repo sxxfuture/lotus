@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
@@ -18,6 +19,9 @@ type SectorInfo struct {
 	Ticket       abi.Randomness
 	SealProof    abi.RegisteredSealProof
 	SealedCID    cid.Cid
+
+	CommD        cid.Cid
+	CommR        cid.Cid
 }
 
 
@@ -58,4 +62,20 @@ func GetSectorCommitInfoOnChain(ctx context.Context, fullNodeApi v0api.FullNode,
 	}
 
 	return ts, &preCommitInfo, err
+}
+
+func GetSectorInfoOnMiner(ctx context.Context, storageMinerApi api.StorageMiner, sid abi.SectorNumber) (*api.SectorInfo, error) {
+	//minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//defer closer()
+	//ctx := lcli.ReqContext(cctx)
+
+	sector, err := storageMinerApi.SectorsStatus(ctx, abi.SectorNumber(sid), true)
+	if err != nil {
+		return nil, xerrors.Errorf("sector %d not found, could not change state", sid)
+	}
+
+	return &sector,nil
 }
