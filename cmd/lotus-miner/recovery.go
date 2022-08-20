@@ -155,7 +155,13 @@ var recoveryGetSectorOnChainCmd = &cli.Command{
 		}
 		defer closer()
 
-		si,err := getSectorOnChain(ctx,fullNodeApi,maddr,sector)
+		storageMinerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("GetStorageMinerAPI error:", err)
+		}
+		defer closer()
+
+		si,err := getSectorOnChain(ctx,fullNodeApi,storageMinerApi,maddr,sector)
 		if err != nil {
 			return xerrors.Errorf("sector on chain error: %w", err)
 		}
@@ -260,7 +266,13 @@ var recoveryRestoreSectorCmd = &cli.Command{
 			}
 			defer closer()
 
-			si,err = getSectorOnChain(ctx,fullNodeApi,maddr,sector)
+			storageMinerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+			if err != nil {
+				return xerrors.Errorf("GetStorageMinerAPI error:", err)
+			}
+			defer closer()
+
+			si,err = getSectorOnChain(ctx,fullNodeApi,storageMinerApi,maddr,sector)
 			if err != nil {
 				return xerrors.Errorf("sector on chain error: %w", err)
 			}
@@ -401,7 +413,7 @@ var recoveryFetchDataCmd = &cli.Command{
 			defer closer()
 
 
-			si,err = getSectorOnChain(ctx,fullNodeApi,maddr,sector)
+			si,err = getSectorOnChain(ctx,fullNodeApi,storageMinerApi,maddr,sector)
 			if err != nil {
 				return xerrors.Errorf("sector on chain error: %w", err)
 			}
