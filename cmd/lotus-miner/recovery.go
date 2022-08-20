@@ -426,6 +426,9 @@ var recoveryFetchDataCmd = &cli.Command{
 
 		ss := recovery.NewSectorSealer(workRepo)
 		buf,err := ss.FetchBytes(ctx, sref,fileSize, abi.UnpaddedPieceSize(pieceSize), abi.SealRandomness(si.Ticket),func(){})
+		if err!=nil {
+			return xerrors.Errorf("fetch bytes error: %w", err)
+		}
 
 		if err := ioutil.WriteFile(desFilePath, buf.Bytes(), 0644); err != nil {
 			return xerrors.Errorf("write buf to the destination error: %w", err)
