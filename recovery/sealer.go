@@ -356,7 +356,7 @@ func (ssb *SectorSealer) FetchBytes(ctx context.Context,si storiface.SectorRef,s
 
 	b, err := ssb.sb.ReadPiece(context.TODO(), &buf, si, 0, pieceSize)
 	if !b {
-		if err = ssb.sb.UnsealPiece(context.TODO(), si, 0, pieceSize, ticket, ssb.cids.Unsealed); err != nil {
+		if err = ssb.sb.UnsealPiece(context.TODO(), si, 0, pieceSize, ticket, ssb.cids.Sealed); err != nil {
 			return nil, err
 		}
 	}
