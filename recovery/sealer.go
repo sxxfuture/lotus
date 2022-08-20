@@ -251,6 +251,22 @@ func (ssb *SectorSealer) PreCommit(ctx context.Context, ticket abi.SealRandomnes
 	return nil
 }
 
+func (ssb *SectorSealer) PreCommitAndCheck(ctx context.Context, ticket abi.SealRandomness,sealedCID string) (err error) {
+	ssb.ticket = ticket
+
+	err = ssb.preCommit1(ctx, *ssb.ref,ticket)
+	if err != nil {
+		return err
+	}
+
+	err = ssb.preCommit2AndCheck(ctx, *ssb.ref,sealedCID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (ssb *SectorSealer) preCommit1(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness) (err error) {
 	ssb.p1, err = ssb.sb.SealPreCommit1(ctx,sector,ticket,ssb.pieces)
 	return
@@ -258,6 +274,15 @@ func (ssb *SectorSealer) preCommit1(ctx context.Context, sector storiface.Sector
 
 func (ssb *SectorSealer) preCommit2(ctx context.Context, sector storiface.SectorRef) (err error) {
 	ssb.cids, err = ssb.sb.SealPreCommit2(context.TODO(), sector, ssb.p1)
+	return
+}
+
+func (ssb *SectorSealer) preCommit2AndCheck(ctx context.Context, sector storiface.SectorRef,sealedCID string) (err error) {
+	ssb.cids, err = ssb.sb.SealPreCommit2(context.TODO(), sector, ssb.p1)
+
+	if sealedCID != ssb.cids.Sealed.String() {
+		return xerrors.Errorf("sealed cid mismatching!!! (sealedCID: %v, newSealedCID: %v)", sealedCID, ssb.cids.Sealed.String())
+	}
 	return
 }
 

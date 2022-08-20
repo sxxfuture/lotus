@@ -261,7 +261,8 @@ var recoveryRestoreSectorCmd = &cli.Command{
 			return xerrors.Errorf("packing error: %w", err)
 		}
 
-		err = ss.PreCommit(ctx, abi.SealRandomness(si.Ticket))
+		//err = ss.PreCommit(ctx, abi.SealRandomness(si.Ticket))
+		err = ss.PreCommitAndCheck(ctx, abi.SealRandomness(si.Ticket), si.SealedCID.String())
 		if err != nil {
 			return xerrors.Errorf("precommitting error: %w", err)
 		}
