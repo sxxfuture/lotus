@@ -53,12 +53,12 @@ var recoveryGenFileCmd = &cli.Command{
 		path := cctx.Args().First()
 
 		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
-		log.Info("unpadded size: ",ssize)
 
 		bz,err := recovery.RandBytes(uint64(abi.PaddedPieceSize(ssize).Unpadded()))
 		if err != nil {
 			return fmt.Errorf("failed to get rand str: %w", err)
 		}
+		log.Info("unpadded size: ",abi.PaddedPieceSize(ssize).Unpadded())
 
 		err = ioutil.WriteFile(path,bz, 755)
 		if err != nil {
@@ -77,12 +77,13 @@ var recoveryProbeFileCmd = &cli.Command{
 
 	},
 	Action: func(cctx *cli.Context) error {
-		//ctx := cliutil.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if cctx.NArg() != 1{
 			return xerrors.Errorf("must specify one input file")
 		}
 		path := cctx.Args().First()
+
 		file,err := os.Open(path)
 		if err!= nil {
 			return xerrors.Errorf("open file error: %w",err)
@@ -94,7 +95,8 @@ var recoveryProbeFileCmd = &cli.Command{
 			return xerrors.Errorf("read file-stat error: %w",err)
 		}
 		size := fi.Size()
-		pinfo,err :=recovery.GetPieceInfo(file)
+		//pinfo,err :=recovery.GetPieceInfo(file)
+		pinfo,err :=recovery.CalcCommP(ctx, file)
 		if err!= nil {
 			return xerrors.Errorf("get piece info error: %w",err)
 		}

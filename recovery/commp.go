@@ -1,12 +1,14 @@
 package recovery
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"github.com/filecoin-project/filecoin-ffi/cgo"
 	"github.com/filecoin-project/go-commp-utils/writer"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/ipld/go-car"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"io"
@@ -17,6 +19,39 @@ import (
 	"runtime"
 	"strings"
 )
+
+func CalcCommP(ctx context.Context, rds io.ReadSeeker) (*api.CommPRet, error) {
+	//rdr, err := os.Open(inpath)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//defer rdr.Close() //nolint:errcheck
+
+	_, err := car.ReadHeader(bufio.NewReader(rds))
+	if err != nil {
+		return nil, xerrors.Errorf("not a car file: %w", err)
+	}
+
+	if _, err := rds.Seek(0, io.SeekStart); err != nil {
+		return nil, xerrors.Errorf("seek to start: %w", err)
+	}
+
+	w := &writer.Writer{}
+	_, err = io.CopyBuffer(w, rds, make([]byte, writer.CommPBuf))
+	if err != nil {
+		return nil, xerrors.Errorf("copy into commp writer: %w", err)
+	}
+
+	commp, err := w.Sum()
+	if err != nil {
+		return nil, xerrors.Errorf("computing commP failed: %w", err)
+	}
+
+	return &api.CommPRet{
+		Root: commp.PieceCID,
+		Size: commp.PieceSize.Unpadded(),
+	}, nil
+}
 
 func GetPieceInfo(rdr io.Reader) (*api.CommPRet, error) {
 	w := &writer.Writer{}
