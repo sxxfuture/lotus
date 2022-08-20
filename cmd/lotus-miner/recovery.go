@@ -446,7 +446,7 @@ var recoveryFetchDataCmd = &cli.Command{
 		fileSize := cctx.Uint64("file-size")
 		pieceSize := cctx.Uint64("piece-size")
 
-		_,cid,err := cid.CidFromBytes([]byte(si.SealedCID.String()))
+		_,cid,err := cid.CidFromBytes(si.CommD.Bytes())
 		if err!= nil {
 			return xerrors.Errorf("cid from bytes error: %w", err)
 		}
