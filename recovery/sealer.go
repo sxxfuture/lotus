@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
@@ -351,12 +352,12 @@ func (ssb *SectorSealer) RemoveUnsealed(sector storiface.SectorRef) (err error) 
 	return nil
 }
 
-func (ssb *SectorSealer) FetchBytes(ctx context.Context,si storiface.SectorRef,size uint64,pieceSize abi.UnpaddedPieceSize,ticket abi.SealRandomness, done func()) (*bytes.Buffer, error) {
+func (ssb *SectorSealer) FetchBytes(ctx context.Context,si storiface.SectorRef,size uint64,pieceSize abi.UnpaddedPieceSize,ticket abi.SealRandomness,unsealed cid.Cid, done func()) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 
 	b, err := ssb.sb.ReadPiece(context.TODO(), &buf, si, 0, pieceSize)
 	if !b {
-		if err = ssb.sb.UnsealPiece(context.TODO(), si, 0, pieceSize, ticket, ssb.cids.Sealed); err != nil {
+		if err = ssb.sb.UnsealPiece(context.TODO(), si, 0, pieceSize, ticket, unsealed); err != nil {
 			return nil, err
 		}
 	}

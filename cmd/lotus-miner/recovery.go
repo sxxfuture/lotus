@@ -13,6 +13,7 @@ import (
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/recovery"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"io/ioutil"
@@ -424,8 +425,13 @@ var recoveryFetchDataCmd = &cli.Command{
 		fileSize := cctx.Uint64("file-size")
 		pieceSize := cctx.Uint64("piece-size")
 
+		_,cid,err := cid.CidFromBytes([]byte(si.SealedCID.String()))
+		if err!= nil {
+			return xerrors.Errorf("cid from bytes error: %w", err)
+		}
+
 		ss := recovery.NewSectorSealer(workRepo)
-		buf,err := ss.FetchBytes(ctx, sref,fileSize, abi.UnpaddedPieceSize(pieceSize), abi.SealRandomness(si.Ticket),func(){})
+		buf,err := ss.FetchBytes(ctx, sref,fileSize, abi.UnpaddedPieceSize(pieceSize), abi.SealRandomness(si.Ticket),cid,func(){})
 		if err!=nil {
 			return xerrors.Errorf("fetch bytes error: %w", err)
 		}
