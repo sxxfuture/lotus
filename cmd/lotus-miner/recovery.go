@@ -106,9 +106,9 @@ var recoveryProbeFileCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("CID: ", encoder.Encode(pinfo.Root))
-		fmt.Println("Piece size(in bytes): ", pinfo.Size)
-		fmt.Println("  Raw size(in bytes): ", size)
+		fmt.Println("                   CID: ", encoder.Encode(pinfo.Root))
+		fmt.Println("  Piece size(in bytes): ", pinfo.Size)
+		fmt.Println("Payload size(in bytes): ", size)
 
 
 		return nil
