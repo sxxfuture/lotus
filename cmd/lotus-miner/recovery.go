@@ -25,10 +25,47 @@ var sectorsRecoveryCmd = &cli.Command{
 	Name:  "recovery",
 	Usage: "Attempt to restore a sector consisting of data",
 	Subcommands: []*cli.Command{
+		recoveryGenFileCmd,
 		recoveryProbeFileCmd,
 		recoveryGetSectorOnChainCmd,
 		recoveryFetchDataCmd,
 		recoveryRestoreSectorCmd,
+	},
+}
+
+var recoveryGenFileCmd = &cli.Command{
+	Name:  "gen-file",
+	Usage: `utility tool used to gen a file aligned with sector size`,
+	ArgsUsage: "[output file path]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "sector-size",
+			Value: "32GiB",
+			Usage: "size of the sectors in bytes, i.e. 2KiB",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		//ctx := cliutil.ReqContext(cctx)
+
+		if cctx.NArg() != 1{
+			return xerrors.Errorf("must specify one output file path")
+		}
+		path := cctx.Args().First()
+
+		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
+		log.Info("unpadded size: ",ssize)
+
+		bz,err := recovery.RandBytes(uint64(abi.PaddedPieceSize(ssize).Unpadded()))
+		if err != nil {
+			return fmt.Errorf("failed to get rand str: %w", err)
+		}
+
+		err = ioutil.WriteFile(path,bz, 755)
+		if err != nil {
+			return fmt.Errorf("failed to write file: %w", err)
+		}
+
+		return nil
 	},
 }
 

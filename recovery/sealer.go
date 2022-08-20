@@ -64,12 +64,12 @@ func NewSectorSealer(root string) *SectorSealer {
 		panic(err)
 	}
 
-	rl,err := SetupLogger()
-	if err != nil {
-		panic(err)
-	}
-	_ = os.Setenv("FIL_PROOFS_USE_MULTICORE_SDR", "1")
-	rl.Reset()
+	//rl,err := SetupLogger()
+	//if err != nil {
+	//	panic(err)
+	//}
+	//_ = os.Setenv("FIL_PROOFS_USE_MULTICORE_SDR", "1")
+	//rl.Reset()
 
 	return &SectorSealer{
 		sp: sp,
