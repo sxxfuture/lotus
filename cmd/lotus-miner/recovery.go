@@ -33,6 +33,11 @@ import (
 	"restore-sector" is responsible for redo a sector on a basis of the meta,piece file
 
  */
+
+
+/*
+	sectorsRecoveryCmd is available if it is added to sectorsCmd(cmd/lotus-miner/sectors.go)'s Subcommands domain
+ */
 var sectorsRecoveryCmd = &cli.Command{
 	Name:  "recovery",
 	Usage: "attempt to restore a sector consisting of data",
