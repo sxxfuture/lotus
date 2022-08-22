@@ -24,9 +24,18 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+/*
+	Francis.Deng(francis_xiiiv@163.com):
+	"get-sector-onchain","fetch-data" and "restore-sector" together play curcial role in how to recoer a sector file.
+
+	"get-sector-onchain" collect sector information on chain to make a local metafile.
+	"fetch-data" is expected to fetch piece from a complete sector.After that,save the piece into local dir.
+	"restore-sector" is responsible for redo a sector on a basis of the meta,piece file
+
+ */
 var sectorsRecoveryCmd = &cli.Command{
 	Name:  "recovery",
-	Usage: "Attempt to restore a sector consisting of data",
+	Usage: "attempt to restore a sector consisting of data",
 	Subcommands: []*cli.Command{
 		recoveryGenFileCmd,
 		recoveryProbeFileCmd,
@@ -120,7 +129,7 @@ var recoveryProbeFileCmd = &cli.Command{
 
 var recoveryGetSectorOnChainCmd = &cli.Command{
 	Name:  "get-sector-onchain",
-	Usage: `get sector info on chain`,
+	Usage: `get sector info on chain,hooking up to lotus daemon and lotus miner`,
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:  "sector",
@@ -129,7 +138,7 @@ var recoveryGetSectorOnChainCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "miner",
-			Usage:    "miner address, i.e. f01450",
+			Usage:    "miner address starting with f0 or t0, i.e. f01450",
 			Required: true,
 		},
 		&cli.BoolFlag{
@@ -188,11 +197,9 @@ var recoveryGetSectorOnChainCmd = &cli.Command{
 	},
 }
 
-
-
 var recoveryRestoreSectorCmd = &cli.Command{
 	Name:  "restore-sector",
-	ArgsUsage: "[data file path]",
+	ArgsUsage: "[source file]",
 	Usage: `restore sector with data file fetching from another normal miner`,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -207,7 +214,7 @@ var recoveryRestoreSectorCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "miner",
-			Usage:    "miner address, i.e. f01450",
+			Usage:    "miner address starting with f0 or t0, i.e. f01450",
 			Required: true,
 		},
 		&cli.StringFlag{
@@ -328,7 +335,7 @@ var recoveryRestoreSectorCmd = &cli.Command{
 var recoveryFetchDataCmd = &cli.Command{
 	Name:      "fetch-data",
 	ArgsUsage: "[destination file]",
-	Usage:     "Fetch a data from sector",
+	Usage:     "fetch a data from sector",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "sector-size",
@@ -342,7 +349,7 @@ var recoveryFetchDataCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "miner",
-			Usage:    "miner address, i.e. f01450",
+			Usage:    "miner address starting with f0 or t0, i.e. f01450",
 			Required: true,
 		},
 		&cli.StringFlag{
