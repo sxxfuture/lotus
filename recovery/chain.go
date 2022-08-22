@@ -45,7 +45,7 @@ func GetSectorCommitInfoOnChain(ctx context.Context, fullNodeApi v0api.FullNode,
 		return nil, nil, err
 	}
 	if si == nil {
-		return nil,nil, xerrors.Errorf("sector not found: %w", si)
+		return nil,nil, xerrors.Errorf("sector not found: %+v", si)
 	}
 
 	ts, err := fullNodeApi.ChainGetTipSetByHeight(ctx, si.Activation, types.EmptyTSK)
@@ -53,12 +53,12 @@ func GetSectorCommitInfoOnChain(ctx context.Context, fullNodeApi v0api.FullNode,
 		return nil, nil, err
 	}
 	if ts == nil {
-		return nil, nil, xerrors.Errorf("tipset not found: %w", si.Activation)
+		return nil, nil, xerrors.Errorf("tipset not found: %+v", si.Activation)
 	}
 
 	preCommitInfo, err := fullNodeApi.StateSectorPreCommitInfo(ctx, maddr, sid, ts.Key())
 	if err != nil {
-		return nil, nil, xerrors.Errorf("error in preCommit info: %w", err)
+		return nil, nil, xerrors.Errorf("error in preCommit info: %+v", err)
 	}
 
 	return ts, &preCommitInfo, err
