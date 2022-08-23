@@ -51,14 +51,14 @@ var sectorsRecoveryCmd = &cli.Command{
 		recoveryGetSectorOnChainCmd,
 		recoveryFetchDataCmd,
 		recoveryRestoreSectorCmd,
-		recoveryOpenPartialFileCmd,
+		recoveryExportPartialFileCmd,
 	},
 }
 
-var recoveryOpenPartialFileCmd = &cli.Command{
-	Name:  "open-partial-file",
-	Usage: `utility tool open partial file directly`,
-	ArgsUsage: "[unsealed partial file]",
+var recoveryExportPartialFileCmd = &cli.Command{
+	Name:  "export-partial-file",
+	Usage: `utility tool export partial file directly`,
+	ArgsUsage: "[unsealed partial file] [destination file]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "sector-size",
@@ -68,27 +68,30 @@ var recoveryOpenPartialFileCmd = &cli.Command{
 		&cli.Int64Flag{
 			Name:  "piece-size",
 			Usage: "calculated piece size in bytes",
-			//Required: true,
+			Required: true,
+		},
+		&cli.Int64Flag{
+			Name:  "file-size",
+			Usage: "raw file payload size in bytes",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		//ctx := cliutil.ReqContext(cctx)
 		buf := new(bytes.Buffer)
 
-		if cctx.NArg() != 1{
-			return xerrors.Errorf("must specify one output file path")
+		if cctx.NArg() != 2{
+			return xerrors.Errorf("must specify two parameters: one unsealed file as source, one output file as destination file")
 		}
 		path := cctx.Args().First()
+		desFilePath := cctx.Args().Get(1)
 
 		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
 
 		maxPieceSize := abi.PaddedPieceSize(ssize)
 
 		paddedPieceSize := abi.PaddedPieceSize(cctx.Uint64("piece-size"))
-		if paddedPieceSize == 0 {
-			paddedPieceSize = abi.PaddedPieceSize(ssize)
-			log.Info("piece-size was replaced with padded sector size: ",paddedPieceSize)
-		}
+		fileSize := cctx.Uint64("file-size")
 
 		pf, err := partialfile.OpenPartialFile(maxPieceSize, path)
 		if err != nil {
@@ -124,6 +127,15 @@ var recoveryOpenPartialFileCmd = &cli.Command{
 
 		if err := pf.Close(); err != nil {
 			return xerrors.Errorf("closing partial file: %w", err)
+		}
+
+		bz := buf.Bytes()
+		if fileSize > uint64(len(bz)) {
+			return xerrors.Errorf("incorrect size(%d) greater than piece length(%d)",fileSize ,len(bz))
+		}
+
+		if err := ioutil.WriteFile(desFilePath, buf.Bytes(), 0644); err != nil {
+			return xerrors.Errorf("write buf to the destination error: %w", err)
 		}
 
 		return nil
