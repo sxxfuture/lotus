@@ -96,13 +96,14 @@ var recoveryExportUnsealedFileCmd = &cli.Command{
 		}
 		paddedPieceSize := abi.UnpaddedPieceSize(psize).Padded()
 		fileSize := cctx.Uint64("file-size")
+		log.Info("unpadded piece size: ",abi.UnpaddedPieceSize(psize),"padded piece size: ",paddedPieceSize,"fil-size: ",fileSize)
 
 		pf, err := partialfile.OpenPartialFile(maxPieceSize, path)
 		if err != nil {
 			return xerrors.Errorf("opening partial file: %w", err)
 		}
 
-		ok, err := pf.HasAllocated(0, paddedPieceSize.Unpadded())
+		ok, err := pf.HasAllocated(0, abi.UnpaddedPieceSize(psize))
 		if err != nil {
 			_ = pf.Close()
 			return xerrors.Errorf("has allocated error: %+v", err)
@@ -124,7 +125,7 @@ var recoveryExportUnsealedFileCmd = &cli.Command{
 			return xerrors.Errorf("creating unpadded reader: %w", err)
 		}
 
-		if _, err := io.CopyN(buf, upr, int64(paddedPieceSize.Unpadded())); err != nil {
+		if _, err := io.CopyN(buf, upr, int64(abi.UnpaddedPieceSize(psize))); err != nil {
 			_ = pf.Close()
 			return xerrors.Errorf("reading unsealed file: %w", err)
 		}
