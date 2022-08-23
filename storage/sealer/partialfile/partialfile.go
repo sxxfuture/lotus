@@ -297,7 +297,7 @@ func (pf *PartialFile) HasAllocated(offset storiface.UnpaddedByteIndex, size abi
 	if err != nil {
 		return false, err
 	}
-
+	log.Info("uc: ",uc)
 	return abi.PaddedPieceSize(uc) == size.Padded(), nil
 }
 
