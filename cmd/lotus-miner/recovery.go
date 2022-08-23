@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -66,6 +68,7 @@ var recoveryOpenPartialFileCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		//ctx := cliutil.ReqContext(cctx)
+		buf := new(bytes.Buffer)
 
 		if cctx.NArg() != 1{
 			return xerrors.Errorf("must specify one output file path")
@@ -98,15 +101,15 @@ var recoveryOpenPartialFileCmd = &cli.Command{
 			return xerrors.Errorf("getting partial file reader: %w", err)
 		}
 
-		_, err = fr32.NewUnpadReader(f, maxPieceSize)
+		upr, err := fr32.NewUnpadReader(f, maxPieceSize)
 		if err != nil {
 			return xerrors.Errorf("creating unpadded reader: %w", err)
 		}
 
-		//if _, err := io.CopyN(writer, upr, int64(size)); err != nil {
-		//	_ = pf.Close()
-		//	return false, xerrors.Errorf("reading unsealed file: %w", err)
-		//}
+		if _, err := io.CopyN(buf, upr, int64(maxPieceSize.Unpadded())); err != nil {
+			_ = pf.Close()
+			return xerrors.Errorf("reading unsealed file: %w", err)
+		}
 
 		if err := pf.Close(); err != nil {
 			return xerrors.Errorf("closing partial file: %w", err)
