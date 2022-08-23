@@ -60,6 +60,10 @@ func (r *unpadReader) Read(out []byte) (int, error) {
 	fmt.Println("todo: ", todo)
 	r.left -= uint64(todo)
 
+	if int(todo) >= len(r.work) {
+		return 0,nil
+	}
+
 	n, err := io.ReadAtLeast(r.src, r.work[:todo], int(todo))
 	if err != nil && err != io.EOF {
 		return n, err

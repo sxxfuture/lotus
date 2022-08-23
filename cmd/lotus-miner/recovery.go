@@ -125,7 +125,7 @@ var recoveryExportUnsealedFileCmd = &cli.Command{
 			return xerrors.Errorf("creating unpadded reader: %w", err)
 		}
 
-		if _, err := io.CopyN(buf, upr, int64(abi.UnpaddedPieceSize(fileSize))); err != nil {
+		if _, err := io.CopyN(buf, upr, int64(abi.UnpaddedPieceSize(psize))); err != nil {
 			_ = pf.Close()
 			return xerrors.Errorf("reading unsealed file: %w", err)
 		}
