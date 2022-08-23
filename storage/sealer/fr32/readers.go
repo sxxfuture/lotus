@@ -1,6 +1,7 @@
 package fr32
 
 import (
+	"fmt"
 	"io"
 	"math/bits"
 
@@ -43,11 +44,11 @@ func (r *unpadReader) Read(out []byte) (int, error) {
 	if r.left == 0 {
 		return 0, io.EOF
 	}
-
+	fmt.Println("len(out): ",len(out) )
 	chunks := len(out) / 127
-
+	fmt.Println("chunks: ", chunks)
 	outTwoPow := 1 << (63 - bits.LeadingZeros64(uint64(chunks*128)))
-
+	fmt.Println("outTwoPow: ", outTwoPow)
 	if err := abi.PaddedPieceSize(outTwoPow).Validate(); err != nil {
 		return 0, xerrors.Errorf("output must be of valid padded piece size: %w", err)
 	}
@@ -56,7 +57,7 @@ func (r *unpadReader) Read(out []byte) (int, error) {
 	if r.left < uint64(todo) {
 		todo = abi.PaddedPieceSize(1 << (63 - bits.LeadingZeros64(r.left)))
 	}
-
+	fmt.Println("todo: ", todo)
 	r.left -= uint64(todo)
 
 	n, err := io.ReadAtLeast(r.src, r.work[:todo], int(todo))

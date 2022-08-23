@@ -96,7 +96,7 @@ var recoveryExportUnsealedFileCmd = &cli.Command{
 		}
 		paddedPieceSize := abi.UnpaddedPieceSize(psize).Padded()
 		fileSize := cctx.Uint64("file-size")
-		log.Info("unpadded piece size: ",abi.UnpaddedPieceSize(psize),"padded piece size: ",paddedPieceSize,"fil-size: ",fileSize)
+		log.Info("unpadded piece size: ",abi.UnpaddedPieceSize(psize)," padded piece size: ",paddedPieceSize," fil-size: ",fileSize)
 
 		pf, err := partialfile.OpenPartialFile(maxPieceSize, path)
 		if err != nil {
