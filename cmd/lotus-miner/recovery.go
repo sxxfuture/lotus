@@ -457,10 +457,10 @@ var recoveryFetchDataCmd = &cli.Command{
 		}
 
 		fileSize := cctx.Uint64("file-size")
-		pieceSize := cctx.Uint64("piece-size")
-		if pieceSize == 0 {
-			pieceSize = uint64(ssize)
-			log.Info("piece-size was replaced with sector-size: ",pieceSize)
+		unpaddedPieceSize := abi.UnpaddedPieceSize(cctx.Uint64("piece-size"))
+		if unpaddedPieceSize == 0 {
+			unpaddedPieceSize = abi.PaddedPieceSize(ssize).Unpadded()
+			log.Info("piece-size was replaced with unpadded sector size: ",unpaddedPieceSize)
 		}
 
 		_,cid,err := cid.CidFromBytes(si.CommD.Bytes())
@@ -469,7 +469,7 @@ var recoveryFetchDataCmd = &cli.Command{
 		}
 
 		ss := recovery.NewSectorSealer(workRepo)
-		buf,err := ss.FetchBytes(ctx, sref,fileSize, abi.UnpaddedPieceSize(pieceSize), abi.SealRandomness(si.Ticket),cid,func(){})
+		buf,err := ss.FetchBytes(ctx, sref,fileSize, unpaddedPieceSize, abi.SealRandomness(si.Ticket),cid,func(){})
 		if err!=nil {
 			return xerrors.Errorf("fetch bytes error: %w", err)
 		}
