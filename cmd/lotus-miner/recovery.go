@@ -14,6 +14,8 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/recovery"
+	"github.com/filecoin-project/lotus/storage/sealer/fr32"
+	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
@@ -47,6 +49,70 @@ var sectorsRecoveryCmd = &cli.Command{
 		recoveryGetSectorOnChainCmd,
 		recoveryFetchDataCmd,
 		recoveryRestoreSectorCmd,
+		recoveryOpenPartialFileCmd,
+	},
+}
+
+var recoveryOpenPartialFileCmd = &cli.Command{
+	Name:  "open-partial-file",
+	Usage: `utility tool open partial file directly`,
+	ArgsUsage: "[unsealed partial file]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "sector-size",
+			Value: "32GiB",
+			Usage: "size of the sectors in bytes, i.e. 2KiB",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		//ctx := cliutil.ReqContext(cctx)
+
+		if cctx.NArg() != 1{
+			return xerrors.Errorf("must specify one output file path")
+		}
+		path := cctx.Args().First()
+
+		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
+
+		maxPieceSize := abi.PaddedPieceSize(ssize)
+
+		pf, err := partialfile.OpenPartialFile(maxPieceSize, path)
+		if err != nil {
+			return xerrors.Errorf("opening partial file: %w", err)
+		}
+
+		ok, err := pf.HasAllocated(0, maxPieceSize.Unpadded())
+		if err != nil {
+			_ = pf.Close()
+			return xerrors.Errorf("has allocated error: %+v", err)
+		}
+
+		if !ok {
+			_ = pf.Close()
+			return xerrors.Errorf("closing partial file with exception")
+		}
+
+		f, err := pf.Reader(0, maxPieceSize)
+		if err != nil {
+			_ = pf.Close()
+			return xerrors.Errorf("getting partial file reader: %w", err)
+		}
+
+		_, err = fr32.NewUnpadReader(f, maxPieceSize)
+		if err != nil {
+			return xerrors.Errorf("creating unpadded reader: %w", err)
+		}
+
+		//if _, err := io.CopyN(writer, upr, int64(size)); err != nil {
+		//	_ = pf.Close()
+		//	return false, xerrors.Errorf("reading unsealed file: %w", err)
+		//}
+
+		if err := pf.Close(); err != nil {
+			return xerrors.Errorf("closing partial file: %w", err)
+		}
+
+		return nil
 	},
 }
 
