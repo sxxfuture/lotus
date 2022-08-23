@@ -625,7 +625,7 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector storif
 
 		return false, xerrors.Errorf("opening partial file: %w", err)
 	}
-
+	log.Infof("before HasAllocated,size: %d", size)
 	ok, err := pf.HasAllocated(offset, size)
 	if err != nil {
 		_ = pf.Close()
@@ -647,7 +647,7 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector storif
 	if err != nil {
 		return false, xerrors.Errorf("creating unpadded reader: %w", err)
 	}
-
+	log.Infof("before io.CopyN,size: %d", size)
 	if _, err := io.CopyN(writer, upr, int64(size)); err != nil {
 		_ = pf.Close()
 		return false, xerrors.Errorf("reading unsealed file: %w", err)
