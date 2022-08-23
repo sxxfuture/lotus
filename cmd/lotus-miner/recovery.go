@@ -112,12 +112,12 @@ var recoveryOpenPartialFileCmd = &cli.Command{
 			return xerrors.Errorf("getting partial file reader: %w", err)
 		}
 
-		upr, err := fr32.NewUnpadReader(f, unpaddedPieceSize.Padded())
+		upr, err := fr32.NewUnpadReader(f, paddedPieceSize)
 		if err != nil {
 			return xerrors.Errorf("creating unpadded reader: %w", err)
 		}
 
-		if _, err := io.CopyN(buf, upr, int64(unpaddedPieceSize)); err != nil {
+		if _, err := io.CopyN(buf, upr, int64(paddedPieceSize.Unpadded())); err != nil {
 			_ = pf.Close()
 			return xerrors.Errorf("reading unsealed file: %w", err)
 		}
