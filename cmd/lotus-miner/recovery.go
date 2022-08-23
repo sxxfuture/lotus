@@ -84,10 +84,10 @@ var recoveryOpenPartialFileCmd = &cli.Command{
 
 		maxPieceSize := abi.PaddedPieceSize(ssize)
 
-		unpaddedPieceSize := abi.UnpaddedPieceSize(cctx.Uint64("piece-size"))
-		if unpaddedPieceSize == 0 {
-			unpaddedPieceSize = abi.PaddedPieceSize(ssize).Unpadded()
-			log.Info("piece-size was replaced with unpadded sector size: ",unpaddedPieceSize)
+		paddedPieceSize := abi.PaddedPieceSize(cctx.Uint64("piece-size"))
+		if paddedPieceSize == 0 {
+			paddedPieceSize = abi.PaddedPieceSize(ssize)
+			log.Info("piece-size was replaced with padded sector size: ",paddedPieceSize)
 		}
 
 		pf, err := partialfile.OpenPartialFile(maxPieceSize, path)
@@ -95,7 +95,7 @@ var recoveryOpenPartialFileCmd = &cli.Command{
 			return xerrors.Errorf("opening partial file: %w", err)
 		}
 
-		ok, err := pf.HasAllocated(0, unpaddedPieceSize)
+		ok, err := pf.HasAllocated(0, paddedPieceSize.Unpadded())
 		if err != nil {
 			_ = pf.Close()
 			return xerrors.Errorf("has allocated error: %+v", err)
@@ -106,7 +106,7 @@ var recoveryOpenPartialFileCmd = &cli.Command{
 			return xerrors.Errorf("closing partial file with exception")
 		}
 
-		f, err := pf.Reader(0, unpaddedPieceSize.Padded())
+		f, err := pf.Reader(0, paddedPieceSize)
 		if err != nil {
 			_ = pf.Close()
 			return xerrors.Errorf("getting partial file reader: %w", err)
