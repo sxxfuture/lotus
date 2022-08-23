@@ -367,10 +367,11 @@ var recoveryFetchDataCmd = &cli.Command{
 			Usage: "raw file size in bytes",
 			Required: true,
 		},
+		// replace it with sector size bytes
 		&cli.Int64Flag{
 			Name:  "piece-size",
 			Usage: "calculated piece size in bytes",
-			Required: true,
+			//Required: true,
 		},
 		&cli.BoolFlag{
 			Name:     "meta",
@@ -457,6 +458,10 @@ var recoveryFetchDataCmd = &cli.Command{
 
 		fileSize := cctx.Uint64("file-size")
 		pieceSize := cctx.Uint64("piece-size")
+		if pieceSize == 0 {
+			pieceSize = uint64(ssize)
+			log.Info("piece-size was replaced with sector-size: ",pieceSize)
+		}
 
 		_,cid,err := cid.CidFromBytes(si.CommD.Bytes())
 		if err!= nil {

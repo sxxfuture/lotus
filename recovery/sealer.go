@@ -355,16 +355,21 @@ func (ssb *SectorSealer) RemoveUnsealed(sector storiface.SectorRef) (err error) 
 func (ssb *SectorSealer) FetchBytes(ctx context.Context,si storiface.SectorRef,size uint64,pieceSize abi.UnpaddedPieceSize,ticket abi.SealRandomness,unsealed cid.Cid, done func()) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 
-	b, err := ssb.sb.ReadPiece(context.TODO(), &buf, si, 0, pieceSize)
-	if !b {
-		if err = ssb.sb.UnsealPiece(context.TODO(), si, 0, pieceSize, ticket, unsealed); err != nil {
-			return nil, err
-		}
+	_, err := ssb.sb.ReadPiece(context.TODO(), &buf, si, 0, pieceSize)
+	if err!=nil {
+		log.Infof("force to do unsealing work,ignoring the error: %+v", err)
 	}
+	//if !b {
+	//	if err = ssb.sb.UnsealPiece(context.TODO(), si, 0, pieceSize, ticket, unsealed); err != nil {
+	//		return nil, xerrors.Errorf("unsealing piece error: %+v", err)
+	//	}
+	//
+	//	if b, err = ssb.sb.ReadPiece(context.TODO(), &buf, si, 0, pieceSize); !b{
+	//		return nil, xerrors.Errorf("reading piece again error: %+v", err)
+	//	}
+	//}
 
-	if b, err = ssb.sb.ReadPiece(context.TODO(), &buf, si, 0, pieceSize); !b{
-		return nil, err
-	}
+
 
 	bz := buf.Bytes()
 	if size > uint64(len(bz)) {
