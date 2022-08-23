@@ -90,7 +90,11 @@ var recoveryExportUnsealedFileCmd = &cli.Command{
 
 		maxPieceSize := abi.PaddedPieceSize(ssize)
 
-		paddedPieceSize := abi.PaddedPieceSize(cctx.Uint64("piece-size"))
+		psize := cctx.Int64("piece-size")
+		if psize == 0 {
+			return xerrors.Errorf("must specify piece size when manually setting cid")
+		}
+		paddedPieceSize := abi.UnpaddedPieceSize(psize).Padded()
 		fileSize := cctx.Uint64("file-size")
 
 		pf, err := partialfile.OpenPartialFile(maxPieceSize, path)
