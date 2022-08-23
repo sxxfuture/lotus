@@ -65,6 +65,11 @@ var recoveryOpenPartialFileCmd = &cli.Command{
 			Value: "32GiB",
 			Usage: "size of the sectors in bytes, i.e. 2KiB",
 		},
+		&cli.Int64Flag{
+			Name:  "piece-size",
+			Usage: "calculated piece size in bytes",
+			//Required: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		//ctx := cliutil.ReqContext(cctx)
@@ -79,12 +84,18 @@ var recoveryOpenPartialFileCmd = &cli.Command{
 
 		maxPieceSize := abi.PaddedPieceSize(ssize)
 
+		unpaddedPieceSize := abi.UnpaddedPieceSize(cctx.Uint64("piece-size"))
+		if unpaddedPieceSize == 0 {
+			unpaddedPieceSize = abi.PaddedPieceSize(ssize).Unpadded()
+			log.Info("piece-size was replaced with unpadded sector size: ",unpaddedPieceSize)
+		}
+
 		pf, err := partialfile.OpenPartialFile(maxPieceSize, path)
 		if err != nil {
 			return xerrors.Errorf("opening partial file: %w", err)
 		}
 
-		ok, err := pf.HasAllocated(0, maxPieceSize.Unpadded())
+		ok, err := pf.HasAllocated(0, unpaddedPieceSize)
 		if err != nil {
 			_ = pf.Close()
 			return xerrors.Errorf("has allocated error: %+v", err)
@@ -95,18 +106,18 @@ var recoveryOpenPartialFileCmd = &cli.Command{
 			return xerrors.Errorf("closing partial file with exception")
 		}
 
-		f, err := pf.Reader(0, maxPieceSize)
+		f, err := pf.Reader(0, unpaddedPieceSize.Padded())
 		if err != nil {
 			_ = pf.Close()
 			return xerrors.Errorf("getting partial file reader: %w", err)
 		}
 
-		upr, err := fr32.NewUnpadReader(f, maxPieceSize)
+		upr, err := fr32.NewUnpadReader(f, unpaddedPieceSize.Padded())
 		if err != nil {
 			return xerrors.Errorf("creating unpadded reader: %w", err)
 		}
 
-		if _, err := io.CopyN(buf, upr, int64(maxPieceSize.Unpadded())); err != nil {
+		if _, err := io.CopyN(buf, upr, int64(unpaddedPieceSize)); err != nil {
 			_ = pf.Close()
 			return xerrors.Errorf("reading unsealed file: %w", err)
 		}
