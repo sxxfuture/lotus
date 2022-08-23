@@ -51,14 +51,14 @@ var sectorsRecoveryCmd = &cli.Command{
 		recoveryGetSectorOnChainCmd,
 		recoveryFetchDataCmd,
 		recoveryRestoreSectorCmd,
-		recoveryExportPartialFileCmd,
+		recoveryExportUnsealedFileCmd,
 	},
 }
 
-var recoveryExportPartialFileCmd = &cli.Command{
-	Name:  "export-partial-file",
-	Usage: `utility tool export partial file directly`,
-	ArgsUsage: "[unsealed partial file] [destination file]",
+var recoveryExportUnsealedFileCmd = &cli.Command{
+	Name:  "export-unsealed-file",
+	Usage: `utility tool export unsealed file directly`,
+	ArgsUsage: "[unsealed file] [exported file]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "sector-size",
@@ -81,7 +81,7 @@ var recoveryExportPartialFileCmd = &cli.Command{
 		buf := new(bytes.Buffer)
 
 		if cctx.NArg() != 2{
-			return xerrors.Errorf("must specify two parameters: one unsealed file as source, one output file as destination file")
+			return xerrors.Errorf("must specify two parameters: one unsealed file as source file, one output file as destination file")
 		}
 		path := cctx.Args().First()
 		desFilePath := cctx.Args().Get(1)
