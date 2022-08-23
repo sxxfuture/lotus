@@ -373,7 +373,7 @@ func (ssb *SectorSealer) FetchBytes(ctx context.Context,si storiface.SectorRef,s
 
 	bz := buf.Bytes()
 	if size > uint64(len(bz)) {
-		return nil,xerrors.Errorf("incorrect size: ",size, "piece length:",len(bz))
+		return nil,xerrors.Errorf("incorrect size(%d) greater than piece length(%d)",size ,len(bz))
 	}
 
 	newBuf := bytes.NewBuffer(bz[:size])
