@@ -120,7 +120,7 @@ var recoveryExportUnsealedFileCmd = &cli.Command{
 			return xerrors.Errorf("getting partial file reader: %w", err)
 		}
 
-		upr, err := fr32.NewUnpadReader(f, maxPieceSize)
+		upr, err := fr32.NewUnpadReader(f, paddedPieceSize)
 		if err != nil {
 			return xerrors.Errorf("creating unpadded reader: %w", err)
 		}
