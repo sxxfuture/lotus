@@ -60,6 +60,7 @@ var sectorsCmd = &cli.Command{
 		sectorsBatching,
 		sectorsRefreshPieceMatchingCmd,
 		sectorsCompactPartitionsCmd,
+		sectorsRecoveryCmd,
 	},
 }
 
