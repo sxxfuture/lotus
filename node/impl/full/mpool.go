@@ -161,6 +161,9 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	if err != nil {
 		return nil, xerrors.Errorf("GasEstimateMessageGas error: %w", err)
 	}
+	
+	// add of donglin
+	// 增加gas费用判断
 
 	if msg.GasPremium.GreaterThan(msg.GasFeeCap) {
 		inJson, _ := json.Marshal(inMsg)

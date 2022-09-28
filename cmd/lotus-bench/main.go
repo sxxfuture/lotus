@@ -685,7 +685,8 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 							}
 							done()
 
-							if err := os.Remove(p.Unsealed); err != nil {
+							// if err := os.Remove(p.Unsealed); err != nil {
+							if err := os.Rename(p.Unsealed, p.Unsealed + "_old"); err != nil {
 								return xerrors.Errorf("removing unsealed sector: %w", err)
 							}
 						}

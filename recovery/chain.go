@@ -22,6 +22,7 @@ type SectorInfo struct {
 
 	CommD        cid.Cid
 	CommR        cid.Cid
+	Pieces       []abi.PieceInfo
 }
 
 

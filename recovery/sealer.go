@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"math/bits"
 	"os"
+	"path/filepath"
 )
 
 var log = logging.Logger("ssb")
@@ -263,6 +264,50 @@ func (ssb *SectorSealer) PreCommitAndCheck(ctx context.Context, ticket abi.SealR
 	err = ssb.preCommit2AndCheck(ctx, *ssb.ref,sealedCID)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (ssb *SectorSealer) UnsealByOne(ctx context.Context, sector storiface.SectorRef, pieceSize abi.UnpaddedPieceSize, ticket abi.SealRandomness, commd cid.Cid, sealpath string, workRepo string) (unsealed bool, err error) {
+
+	log.Infof("UnsealByOne")
+	cachepath := filepath.Join(workRepo, "cache", storiface.SectorName(sector.ID))
+	if err := os.Mkdir(filepath.Join(workRepo, "cache"), 0755); err != nil && !os.IsExist(err) { // nolint
+		return false, err
+	}
+	if err := os.Mkdir(cachepath, 0755); err != nil && !os.IsExist(err) { // nolint
+		return false, err
+	}
+	if err = ssb.sb.UnsealPieceOfOnePath(ctx, sector, 0, pieceSize, ticket, commd, sealpath, cachepath); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (ssb *SectorSealer) PcToSealed(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo, sealedCID string) (err error) {
+
+	if ssb.ref != nil {
+		if ssb.ref.ID != sector.ID || ssb.ref.ProofType != sector.ProofType {
+			return xerrors.New("not matching sector ref")
+		}
+	} else {
+		ssb.ref = &sector
+	}
+
+	p1out, err := ssb.sb.SealPreCommit1(ctx, sector, ticket, pieces)
+	if err != nil {
+		return err
+	}
+
+	cids, err := ssb.sb.SealPreCommit2(context.TODO(), sector, p1out)
+	if err != nil {
+		return err
+	}
+
+	if sealedCID != cids.Sealed.String() {
+		return xerrors.Errorf("sealed cid mismatching!!! (sealedCID: %v, newSealedCID: %v)", sealedCID, ssb.cids.Sealed.String())
 	}
 
 	return nil

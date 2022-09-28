@@ -48,7 +48,10 @@ func writeTrailer(maxPieceSize int64, w *os.File, r rlepluslazy.RunIterator) err
 		return xerrors.Errorf("seek to trailer start: %w", err)
 	}
 
+	log.Warnf("trailer is %q;", trailer)
 	rb, err := w.Write(trailer)
+	log.Warnf("maxPieceSize is %d;", maxPieceSize)
+	log.Warnf("rb is %d;", int64(rb))
 	if err != nil {
 		return xerrors.Errorf("writing trailer data: %w", err)
 	}
@@ -61,6 +64,7 @@ func writeTrailer(maxPieceSize int64, w *os.File, r rlepluslazy.RunIterator) err
 }
 
 func CreatePartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*PartialFile, error) {
+	log.Warnf("path is %s;", path)
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644) // nolint
 	if err != nil {
 		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
@@ -210,6 +214,9 @@ func (pf *PartialFile) Writer(offset storiface.PaddedByteIndex, size abi.PaddedP
 }
 
 func (pf *PartialFile) MarkAllocated(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) error {
+	log.Warnf("MarkAllocated")
+	log.Warnf("MarkAllocated offset: %d", offset)
+	log.Warnf("MarkAllocated size: %d", size)	
 	have, err := pf.allocated.RunIterator()
 	if err != nil {
 		return err
@@ -228,6 +235,7 @@ func (pf *PartialFile) MarkAllocated(offset storiface.PaddedByteIndex, size abi.
 }
 
 func (pf *PartialFile) Free(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) error {
+	log.Warnf("Free")
 	have, err := pf.allocated.RunIterator()
 	if err != nil {
 		return err

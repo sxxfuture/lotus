@@ -52,6 +52,199 @@ var sectorsRecoveryCmd = &cli.Command{
 		recoveryFetchDataCmd,
 		recoveryRestoreSectorCmd,
 		recoveryExportUnsealedFileCmd,
+		recoveryUnsealCmd,
+		recoverysealCmd,
+	},
+}
+
+var recoveryUnsealCmd = &cli.Command{
+	Name:  "unseal-file",
+	Usage: `unseal the sealed file`,
+	// ArgsUsage: "[output file path]",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "sector",
+			Usage: "sector number, i.e. 3880",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:   "miner",
+			Usage:  "miner address starting with f0 or t0, i.e. f01450",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "sector-size",
+			Value: "32GiB",
+			Usage: "size of the sectors in bytes, i.e. 2KiB",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "sector-storage",
+			Usage: "sector storage path",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "seal-file",
+			Usage: "seal file path",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cliutil.ReqContext(cctx)
+
+		sector := cctx.Uint64("sector")
+
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return xerrors.Errorf("miner address error: %w", err)
+		}
+
+		fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("GetFullNodeAPI error:", err)
+		}
+		defer closer()
+
+		storageMinerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("GetStorageMinerAPI error:", err)
+		}
+		defer closer()
+
+		si, err := getSectorOnChain(ctx, fullNodeApi, storageMinerApi, maddr, sector)
+		if err != nil {
+			return xerrors.Errorf("sector on chain error: %w", err)
+		}
+
+		data, err := json.MarshalIndent(si, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(data))
+
+		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
+		if err != nil {
+			return err
+		}
+		spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), build.NewestNetworkVersion)
+		sectorSize, err := spt.SectorSize()
+		if err != nil {
+			return fmt.Errorf("failed to parse sector size: %w", err)
+		}
+
+		mid, err := address.IDFromAddress(maddr)
+		sref := storiface.SectorRef{
+			ID:        abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(sector)},
+			ProofType: spt,
+		}
+
+		workRepo := cctx.String("sector-storage")
+		log.Info(workRepo)
+		ss := recovery.NewSectorSealer(workRepo)
+
+		sealpath := cctx.String("seal-file")
+		// 开始unseal
+		log.Infof("sectorsize [%d] ", sectorSize)
+		log.Infof("sectorunpadded [%d] ", abi.PaddedPieceSize(sectorSize).Unpadded())
+		_, err = ss.UnsealByOne(ctx, sref, abi.PaddedPieceSize(sectorSize).Unpadded(), abi.SealRandomness(si.Ticket), si.CommD, sealpath, workRepo)
+		if err != nil {
+			return fmt.Errorf("failed to UnsealByOne: %w", err)
+		}
+
+		return nil
+	},
+}
+
+var recoverysealCmd = &cli.Command{
+	Name:  "seal-file",
+	Usage: `seal the unsealed file`,
+	// ArgsUsage: "[output file path]",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "sector",
+			Usage: "sector number, i.e. 3880",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:   "miner",
+			Usage:  "miner address starting with f0 or t0, i.e. f01450",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "sector-size",
+			Value: "32GiB",
+			Usage: "size of the sectors in bytes, i.e. 2KiB",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "sector-storage",
+			Usage: "sector storage path",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cliutil.ReqContext(cctx)
+
+		fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("GetFullNodeAPI error:", err)
+		}
+		defer closer()
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("GetStorageMinerAPI error:", err)
+		}
+		defer closer()
+
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return xerrors.Errorf("miner address error: %w", err)
+		}
+
+		sector := cctx.Uint64("sector")
+
+		// 从status获取piece
+		// status, err := nodeApi.SectorsStatus(ctx, abi.SectorNumber(sector), true)
+		// if err != nil {
+		// 	return err
+		// }
+		// pieces := make([]abi.PieceInfo, len(status.Pieces))
+		// for i, piece := range status.Pieces {
+		// 	pieces[i] = piece.Piece
+		// }
+
+		si, err := getSectorOnChain(ctx, fullNodeApi, nodeApi, maddr, sector)
+		if err != nil {
+			return xerrors.Errorf("sector on chain error: %w", err)
+		}
+
+		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
+		if err != nil {
+			return err
+		}
+		spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), build.NewestNetworkVersion)
+		if err != nil {
+			return fmt.Errorf("failed to parse sector size: %w", err)
+		}
+		mid, err := address.IDFromAddress(maddr)
+		sref := storiface.SectorRef{
+			ID:        abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(sector)},
+			ProofType: spt,
+		}
+
+		// 开始seal
+		workRepo := cctx.String("sector-storage")
+		log.Info(workRepo)
+		ss := recovery.NewSectorSealer(workRepo)
+
+		// PcToSealed(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo, sealedCID string)
+		err = ss.PcToSealed(ctx, sref, abi.SealRandomness(si.Ticket), si.Pieces, si.SealedCID.String())
+		if err != nil {
+			return fmt.Errorf("failed to PcToSealed: %w", err)
+		}
+
+		return nil
 	},
 }
 
@@ -599,7 +792,12 @@ func getSectorOnChain(ctx context.Context,fullNodeApi v0api.FullNode, storageMin
 		CommR:        *siom.CommR,
 	}
 
+	pieces := make([]abi.PieceInfo, len(siom.Pieces))
+	for i, piece := range siom.Pieces {
+		pieces[i] = piece.Piece
+	}
 
+	si.Pieces = pieces
 
 	ticket, err := recovery.GetSectorTicketOnChain(ctx, fullNodeApi, maddr, ts, sectorPreCommitOnChainInfo)
 	if err != nil {
