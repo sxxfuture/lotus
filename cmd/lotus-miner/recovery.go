@@ -181,6 +181,10 @@ var recoverysealCmd = &cli.Command{
 			Usage: "sector storage path",
 			Required: true,
 		},
+		&cli.BoolFlag{
+			Name:  "logpiece",
+			Usage: "use piece in log",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cliutil.ReqContext(cctx)
@@ -204,17 +208,12 @@ var recoverysealCmd = &cli.Command{
 
 		sector := cctx.Uint64("sector")
 
-		// 从status获取piece
-		// status, err := nodeApi.SectorsStatus(ctx, abi.SectorNumber(sector), true)
-		// if err != nil {
-		// 	return err
-		// }
-		// pieces := make([]abi.PieceInfo, len(status.Pieces))
-		// for i, piece := range status.Pieces {
-		// 	pieces[i] = piece.Piece
-		// }
-
-		si, err := getSectorOnChain(ctx, fullNodeApi, nodeApi, maddr, sector)
+		var si *recovery.SectorInfo
+		if cctx.Bool("logpiece") {
+			si, err = getSector(ctx, fullNodeApi, nodeApi, maddr, sector)
+		} else {
+			si, err = getSectorOnChain(ctx, fullNodeApi, nodeApi, maddr, sector)
+		}
 		if err != nil {
 			return xerrors.Errorf("sector on chain error: %w", err)
 		}
@@ -238,10 +237,16 @@ var recoverysealCmd = &cli.Command{
 		log.Info(workRepo)
 		ss := recovery.NewSectorSealer(workRepo)
 
-		// PcToSealed(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo, sealedCID string)
-		err = ss.PcToSealed(ctx, sref, abi.SealRandomness(si.Ticket), si.Pieces, si.SealedCID.String())
-		if err != nil {
-			return fmt.Errorf("failed to PcToSealed: %w", err)
+		if cctx.Bool("logpiece") {
+			err = ss.PcToSealed(ctx, sref, si.SealTicket, si.Pieces, si.SealedCID.String())
+			if err != nil {
+				return fmt.Errorf("failed to PcToSealed: %w", err)
+			}
+		} else {
+			err = ss.PcToSealed(ctx, sref, abi.SealRandomness(si.Ticket), si.Pieces, si.SealedCID.String())
+			if err != nil {
+				return fmt.Errorf("failed to PcToSealed: %w", err)
+			}
 		}
 
 		return nil
@@ -771,6 +776,31 @@ var recoveryFetchDataCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func getSector(ctx context.Context, fullNodeApi v0api.FullNode, storageMinerApi api.StorageMiner,maddr address.Address, sector uint64) (*recovery.SectorInfo,error) {
+
+	status, err := storageMinerApi.SectorsStatus(ctx, abi.SectorNumber(sector), false)
+	if err != nil {
+		return nil, xerrors.Errorf("sector %d not found, could not change state", sector)
+	}
+	si := &recovery.SectorInfo{
+		SectorNumber: abi.SectorNumber(sector),
+		SealedCID:    *status.CommR,
+		CommD:        *status.CommD,
+		CommR:        *status.CommR,
+	}
+
+	pieces := make([]abi.PieceInfo, len(status.Pieces))
+	for i, piece := range status.Pieces {
+		pieces[i] = piece.Piece
+	}
+
+	si.Pieces = pieces
+
+	si.SealTicket = status.Ticket.Value
+
+	return si, nil
 }
 
 func getSectorOnChain(ctx context.Context,fullNodeApi v0api.FullNode, storageMinerApi api.StorageMiner,maddr address.Address, sector uint64) (*recovery.SectorInfo,error) {

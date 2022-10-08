@@ -17,6 +17,7 @@ import (
 type SectorInfo struct {
 	SectorNumber abi.SectorNumber
 	Ticket       abi.Randomness
+	SealTicket   abi.SealRandomness
 	SealProof    abi.RegisteredSealProof
 	SealedCID    cid.Cid
 
@@ -66,12 +67,6 @@ func GetSectorCommitInfoOnChain(ctx context.Context, fullNodeApi v0api.FullNode,
 }
 
 func GetSectorInfoOnMiner(ctx context.Context, storageMinerApi api.StorageMiner, sid abi.SectorNumber) (*api.SectorInfo, error) {
-	//minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//defer closer()
-	//ctx := lcli.ReqContext(cctx)
 
 	sector, err := storageMinerApi.SectorsStatus(ctx, abi.SectorNumber(sid), true)
 	if err != nil {
