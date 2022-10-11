@@ -366,6 +366,10 @@ func (s SealingAPIAdapter) StateMinerProvingDeadline(ctx context.Context, maddr 
 	return s.delegate.StateMinerProvingDeadline(ctx, maddr, tsk)
 }
 
+func (s SealingAPIAdapter) CheckBaseFee(ctx context.Context) (bool, error) {
+	return s.delegate.MpoolCheckBaseFee(ctx)
+}
+
 func (s SealingAPIAdapter) SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error) {
 	msg := types.Message{
 		To:     to,

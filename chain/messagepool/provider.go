@@ -32,6 +32,7 @@ type Provider interface {
 	LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error)
 	IsLite() bool
+	CheckBaseFee(ctx context.Context, ts *types.TipSet) (bool, error)
 }
 
 type mpoolProvider struct {
@@ -121,4 +122,8 @@ func (mpp *mpoolProvider) ChainComputeBaseFee(ctx context.Context, ts *types.Tip
 		return types.NewInt(0), xerrors.Errorf("computing base fee at %s: %w", ts, err)
 	}
 	return baseFee, nil
+}
+
+func (mpp *mpoolProvider) CheckBaseFee(ctx context.Context, ts *types.TipSet) (bool, error) {
+	return mpp.sm.ChainStore().CompareBaseFee(ctx, ts)
 }

@@ -379,6 +379,14 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		}
 	}
 
+	toohigh, err := m.precommiter.compareFee(ctx.Context(), sector, cfg)
+	if err != nil {
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("compareFee: %w", err)})
+	}
+	if toohigh {
+		return ctx.Send(SectorRetryPreCommit{})
+	}
+
 	params, pcd, tok, err := m.preCommitParams(ctx, sector)
 	if err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitParams: %w", err)})
@@ -612,6 +620,14 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 		if nv >= network.Version13 {
 			return ctx.Send(SectorSubmitCommitAggregate{})
 		}
+	}
+
+	toohigh, err := m.commiter.compareFee(ctx.Context(), sector, cfg)
+	if err != nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("compareFee: %w", err)})
+	}
+	if toohigh {
+		return ctx.Send(SectorRetrySubmitCommit{})
 	}
 
 	tok, _, err := m.Api.ChainHead(ctx.Context())

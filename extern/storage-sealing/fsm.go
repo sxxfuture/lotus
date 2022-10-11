@@ -85,6 +85,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorPreCommitLanded{}, WaitSeed),
 		on(SectorDealsExpired{}, DealsExpired),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
+		on(SectorRetryPreCommit{}, PreCommitting),
 	),
 	SubmitPreCommitBatch: planOne(
 		on(SectorPreCommitBatchSent{}, PreCommitBatchWait),
@@ -118,6 +119,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorCommitSubmitted{}, CommitWait),
 		on(SectorSubmitCommitAggregate{}, SubmitCommitAggregate),
 		on(SectorCommitFailed{}, CommitFailed),
+		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
 	SubmitCommitAggregate: planOne(
 		on(SectorCommitAggregateSent{}, CommitAggregateWait),

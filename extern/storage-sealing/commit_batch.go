@@ -44,6 +44,7 @@ type CommitBatcherApi interface {
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
 	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
+	CheckBaseFee(ctx context.Context) (bool, error)
 }
 
 type AggregateInput struct {
@@ -392,10 +393,106 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 	return []sealiface.CommitBatchRes{res}, nil
 }
 
+func (b *CommitBatcher) getSectorCutoff(ctx context.Context, s SectorInfo, maxWait, slack time.Duration) (time.Duration, error) {
+	now := time.Now()
+
+	cutoff, err := b.getCommitCutoff(s)
+	if err != nil {
+		return time.Nanosecond, xerrors.Errorf("failed to calculate cutoff: %w", err)
+	}
+
+	if cutoff.IsZero() {
+		return maxWait, nil
+	}
+
+	cutoff = cutoff.Add(-slack)
+	if cutoff.Before(now) {
+		return time.Nanosecond, nil // can't return 0
+	}
+
+	wait := cutoff.Sub(now)
+	if wait > maxWait {
+		wait = maxWait
+	}
+
+	return wait, nil
+}
+
+func (b *CommitBatcher) compareFee(ctx context.Context, s SectorInfo, cfg sealiface.Config) (bool, error) {
+	waittime, err := b.getSectorCutoff(ctx, s, cfg.CommitBatchWait, cfg.CommitBatchSlack)
+	if err != nil {
+		log.Errorf("getting getSectorCutoff: %s", err)
+		return false, err
+	}
+
+	if waittime > 10 {
+		compareed, err := b.api.CheckBaseFee(b.mctx)
+		if err != nil {
+			log.Errorf("getting getSectorCutoff: %s", err)
+			return false, err
+		}
+		if compareed {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (b *CommitBatcher) batchTimeoutWait(maxWait, slack time.Duration) time.Duration {
+	now := time.Now()
+
+	if len(b.todo) == 0 {
+		return maxWait
+	}
+
+	var cutoff time.Time
+	for sn := range b.todo {
+		sectorCutoff := b.cutoffs[sn]
+		if cutoff.IsZero() || (!sectorCutoff.IsZero() && sectorCutoff.Before(cutoff)) {
+			cutoff = sectorCutoff
+		}
+	}
+	for sn := range b.waiting {
+		sectorCutoff := b.cutoffs[sn]
+		if cutoff.IsZero() || (!sectorCutoff.IsZero() && sectorCutoff.Before(cutoff)) {
+			cutoff = sectorCutoff
+		}
+	}
+
+	if cutoff.IsZero() {
+		return maxWait
+	}
+
+	cutoff = cutoff.Add(-slack)
+	if cutoff.Before(now) {
+		return time.Nanosecond // can't return 0
+	}
+
+	wait := cutoff.Sub(now)
+	if wait > maxWait {
+		wait = maxWait
+	}
+
+	return wait
+}
+
 func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
 	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
+	}
+
+	waittime := b.batchTimeoutWait(cfg.CommitBatchWait, cfg.CommitBatchSlack)
+
+	// waittime minimum is 1
+	if waittime > 10 {
+		compareed, err := b.api.CheckBaseFee(b.mctx)
+		if err != nil {
+			return nil, xerrors.Errorf("compare basefree err: %w", err)
+		}
+		if compareed {
+			return nil, xerrors.Errorf("next basefree is higher than avebasefee")
+		}
 	}
 
 	avail := types.TotalFilecoinInt

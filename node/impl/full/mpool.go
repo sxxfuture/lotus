@@ -135,6 +135,10 @@ func (a *MpoolAPI) MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMes
 	return a.Mpool.PushUntrusted(ctx, smsg)
 }
 
+func (a *MpoolAPI) MpoolCheckBaseFee(ctx context.Context) (bool, error) {
+	return a.Mpool.CheckBaseFee(ctx)
+}
+
 func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
 	cp := *msg
 	msg = &cp

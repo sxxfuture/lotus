@@ -36,6 +36,7 @@ type dealPublisherAPI interface {
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)
+	MpoolCheckBaseFee(context.Context) (bool, error)
 }
 
 // DealPublisher batches deal publishing so that many deals can be included in
@@ -168,6 +169,15 @@ func (p *DealPublisher) ForcePublishPendingDeals() {
 	defer p.lk.Unlock()
 
 	log.Infof("force publishing deals")
+	compareed, err := p.api.MpoolCheckBaseFee(p.ctx)
+	if err != nil {
+		log.Errorf("compare basefee fail")
+		return
+	}
+	if compareed {
+		log.Infof("next basefee higher than avebasefee")
+		return
+	}
 	p.publishAllDeals()
 }
 

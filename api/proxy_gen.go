@@ -266,6 +266,8 @@ type FullNodeStruct struct {
 
 		MpoolSub func(p0 context.Context) (<-chan MpoolUpdate, error) `perm:"read"`
 
+		MpoolCheckBaseFee func(p0 context.Context) (bool, error) `perm:"read"`
+
 		MsigAddApprove func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*MessagePrototype, error) `perm:"sign"`
 
 		MsigAddCancel func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*MessagePrototype, error) `perm:"sign"`
@@ -1943,6 +1945,17 @@ func (s *FullNodeStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessage) 
 
 func (s *FullNodeStub) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
 	return *new(cid.Cid), ErrNotSupported
+}
+
+func (s *FullNodeStruct) MpoolCheckBaseFee(p0 context.Context) (bool, error) {
+	if s.Internal.MpoolSub == nil {
+		return false, ErrNotSupported
+	}
+	return s.Internal.MpoolCheckBaseFee(p0)
+}
+
+func (s *FullNodeStub) MpoolCheckBaseFee(p0 context.Context) (bool, error) {
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolPushMessage(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec) (*types.SignedMessage, error) {

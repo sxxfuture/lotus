@@ -670,6 +670,11 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	return publish, nil
 }
 
+func (mp *MessagePool) CheckBaseFee(ctx context.Context) (bool, error) {
+
+	return mp.api.CheckBaseFee(ctx, mp.curTs)
+}
+
 func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
 	done := metrics.Timer(ctx, metrics.MpoolPushDuration)
 	defer done()

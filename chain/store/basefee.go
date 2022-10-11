@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+	"time"
 )
 
 func ComputeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) types.BigInt {
@@ -80,4 +81,48 @@ func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 
 	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), ts.Height()), nil
+}
+
+// nextbasefee > avebasefee, return trun
+func (cs *ChainStore) CompareBaseFee(ctx context.Context, ts *types.TipSet) (bool, error) {
+	if build.UpgradeBreezeHeight >= 0 && ts.Height() > build.UpgradeBreezeHeight && ts.Height() < build.UpgradeBreezeHeight+build.BreezeGasTampingDuration {
+		return false, nil
+	}
+
+	blocktimestamp := ts.Blocks()[0].Timestamp
+	parentts := ts
+
+	total := int64(0)
+	totalbasefee := ts.Blocks()[0].ParentBaseFee
+	log.Info("parentBaseFee1: ", totalbasefee)
+
+	newtimeUnix := time.Now().Unix()
+	for {
+		if uint64(newtimeUnix - 43200) < blocktimestamp && parentts.Height() > 1 {
+			parentts, _ = cs.LoadTipSet(ctx, parentts.Parents())
+			if parentts == nil {
+				log.Warn("can't Load parentts")
+				break
+			}
+			totalbasefee = big.Add(totalbasefee, parentts.Blocks()[0].ParentBaseFee)
+			blocktimestamp = parentts.Blocks()[0].Timestamp
+			total += 1
+		} else {
+			break
+		}
+	}
+
+	avebase := totalbasefee
+	if total > 0 {
+		avebase = big.Div(totalbasefee, abi.NewTokenAmount(total))
+	}
+	log.Info("avebase: ", avebase)
+
+	nextbase, err := cs.ComputeBaseFee(ctx, ts)
+	if err != nil {
+		return true, err
+	}
+	log.Info("nextbase: ", nextbase)
+
+	return nextbase.GreaterThan(avebase), nil
 }
