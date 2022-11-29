@@ -322,6 +322,185 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 	return &resp.Response.Proposal, nil
 }
 
+func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*network.Proposal, error) {
+	return a.dealStarterSxx(ctx, params, false)
+}
+
+func (a *API) ClientStatelessDeal(ctx context.Context, params *api.StartDealParams) (*network.Proposal, error) {
+	return a.dealStarterSxx(ctx, params, true)
+}
+
+func (a *API) dealStarterSxx(ctx context.Context, params *api.StartDealParams, isStateless bool) (*network.Proposal, error) {
+	if isStateless {
+		if params.Data.TransferType != storagemarket.TTManual {
+			return nil, xerrors.Errorf("invalid transfer type %s for stateless storage deal", params.Data.TransferType)
+		}
+		if !params.EpochPrice.IsZero() {
+			return nil, xerrors.New("stateless storage deals can only be initiated with storage price of 0")
+		}
+	} else if params.Data.TransferType == storagemarket.TTGraphsync {
+		bs, onDone, err := a.dealBlockstore(params.Data.Root)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to find blockstore for root CID: %w", err)
+		}
+		if has, err := bs.Has(ctx, params.Data.Root); err != nil {
+			return nil, xerrors.Errorf("failed to query blockstore for root CID: %w", err)
+		} else if !has {
+			return nil, xerrors.Errorf("failed to find root CID in blockstore: %w", err)
+		}
+		onDone()
+	}
+
+	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("failed resolving params.Wallet addr (%s): %w", params.Wallet, err)
+	}
+
+	exist, err := a.WalletHas(ctx, walletKey)
+	if err != nil {
+		return nil, xerrors.Errorf("failed getting addr from wallet (%s): %w", params.Wallet, err)
+	}
+	if !exist {
+		return nil, xerrors.Errorf("provided address doesn't exist in wallet")
+	}
+
+	mi, err := a.StateMinerInfo(ctx, params.Miner, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
+	}
+
+	md, err := a.StateMinerProvingDeadline(ctx, params.Miner, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("failed getting miner's deadline info: %w", err)
+	}
+
+	if uint64(params.Data.PieceSize.Padded()) > uint64(mi.SectorSize) {
+		return nil, xerrors.New("data doesn't fit in a sector")
+	}
+
+	dealStart := params.DealStartEpoch
+	if dealStart <= 0 { // unset, or explicitly 'epoch undefined'
+		ts, err := a.ChainHead(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("failed getting chain height: %w", err)
+		}
+
+		blocksPerHour := 60 * 60 / build.BlockDelaySecs
+		dealStart = ts.Height() + abi.ChainEpoch(dealStartBufferHours*blocksPerHour) // TODO: Get this from storage ask
+	}
+
+	networkVersion, err := a.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get network version: %w", err)
+	}
+
+	st, err := miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get seal proof type: %w", err)
+	}
+
+	// regular flow
+	if !isStateless {
+		providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, *mi.PeerId, mi.Multiaddrs)
+
+		result, err := a.SMDealClient.ProposeStorageDeal(ctx, storagemarket.ProposeStorageDealParams{
+			Addr:          params.Wallet,
+			Info:          &providerInfo,
+			Data:          params.Data,
+			StartEpoch:    dealStart,
+			EndEpoch:      calcDealExpiration(params.MinBlocksDuration, md, dealStart),
+			Price:         params.EpochPrice,
+			Collateral:    params.ProviderCollateral,
+			Rt:            st,
+			FastRetrieval: params.FastRetrieval,
+			VerifiedDeal:  params.VerifiedDeal,
+		})
+
+		if err != nil {
+			return nil, xerrors.Errorf("failed to start deal: %w", err)
+		}
+
+		return &result.ProposalCid, nil
+	}
+
+	//
+	// stateless flow from here to the end
+	//
+
+	label, err := markettypes.NewLabelFromString(params.Data.Root.Encode(multibase.MustNewEncoder('u')))
+	if err != nil {
+		return nil, xerrors.Errorf("failed to encode label: %w", err)
+	}
+
+	dealProposal := &markettypes.DealProposal{
+		PieceCID:             *params.Data.PieceCid,
+		PieceSize:            params.Data.PieceSize.Padded(),
+		Client:               walletKey,
+		Provider:             params.Miner,
+		Label:                label,
+		StartEpoch:           dealStart,
+		EndEpoch:             calcDealExpiration(params.MinBlocksDuration, md, dealStart),
+		StoragePricePerEpoch: big.Zero(),
+		ProviderCollateral:   params.ProviderCollateral,
+		ClientCollateral:     big.Zero(),
+		VerifiedDeal:         params.VerifiedDeal,
+	}
+
+	if dealProposal.ProviderCollateral.IsZero() {
+		networkCollateral, err := a.StateDealProviderCollateralBounds(ctx, params.Data.PieceSize.Padded(), params.VerifiedDeal, types.EmptyTSK)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to determine minimum provider collateral: %w", err)
+		}
+		dealProposal.ProviderCollateral = networkCollateral.Min
+	}
+
+	dealProposalSerialized, err := cborutil.Dump(dealProposal)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to serialize deal proposal: %w", err)
+	}
+
+	dealProposalSig, err := a.WalletSign(ctx, walletKey, dealProposalSerialized)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to sign proposal : %w", err)
+	}
+
+	dealProposalSigned := &markettypes.ClientDealProposal{
+		Proposal:        *dealProposal,
+		ClientSignature: *dealProposalSig,
+	}
+
+	// change by pan
+	peerid := *mi.PeerId
+	if params.Peerid != nil {
+		peerid = *params.Peerid
+		log.Infof("miner peerid %s/*", peerid)
+	}
+
+	dStream, err := network.NewFromLibp2pHost(a.Host,
+		// params duplicated from .../node/modules/client.go
+		// https://github.com/filecoin-project/lotus/pull/5961#discussion_r629768011
+		network.RetryParameters(time.Second, 5*time.Minute, 15, 5),
+	).NewDealStream(ctx, peerid)
+	// end
+
+	if err != nil {
+		return nil, xerrors.Errorf("opening dealstream to %s/%s failed: %w", params.Miner, *mi.PeerId, err)
+	}
+
+	proposal := network.Proposal{
+		FastRetrieval: true,
+		DealProposal:  dealProposalSigned,
+		Piece: &storagemarket.DataRef{
+			TransferType: storagemarket.TTManual,
+			Root:         params.Data.Root,
+			PieceCid:     params.Data.PieceCid,
+			PieceSize:    params.Data.PieceSize,
+		},
+	}
+
+	return &proposal, nil
+}
+
 func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 	deals, err := a.SMDealClient.ListLocalDeals(ctx)
 	if err != nil {

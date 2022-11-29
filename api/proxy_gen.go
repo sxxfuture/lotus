@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -213,6 +214,10 @@ type FullNodeStruct struct {
 		ClientStartDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"admin"`
 
 		ClientStatelessDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"write"`
+
+		ClientStartDealSxx func(p0 context.Context, p1 *StartDealParams) (*network.Proposal, error) `perm:"admin"`
+
+		ClientStatelessDealSxx func(p0 context.Context, p1 *StartDealParams) (*network.Proposal, error) `perm:"write"`
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
@@ -1766,6 +1771,28 @@ func (s *FullNodeStruct) ClientStatelessDeal(p0 context.Context, p1 *StartDealPa
 }
 
 func (s *FullNodeStub) ClientStatelessDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) ClientStartDealSxx(p0 context.Context, p1 *StartDealParams) (*network.Proposal, error) {
+	if s.Internal.ClientStartDealSxx == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ClientStartDealSxx(p0, p1)
+}
+
+func (s *FullNodeStub) ClientStartDealSxx(p0 context.Context, p1 *StartDealParams) (*network.Proposal, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) ClientStatelessDealSxx(p0 context.Context, p1 *StartDealParams) (*network.Proposal, error) {
+	if s.Internal.ClientStatelessDealSxx == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ClientStatelessDealSxx(p0, p1)
+}
+
+func (s *FullNodeStub) ClientStatelessDealSxx(p0 context.Context, p1 *StartDealParams) (*network.Proposal, error) {
 	return nil, ErrNotSupported
 }
 
