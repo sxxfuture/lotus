@@ -143,8 +143,6 @@ type FullNodeStruct struct {
 
 		ClientStatelessDeal func(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) `perm:"write"`
 
-		ClientStartDealSxx func(p0 context.Context, p1 *api.StartDealParams) (*network.Proposal, error) `perm:"admin"`
-
 		ClientStatelessDealSxx func(p0 context.Context, p1 *api.StartDealParams) (*network.Proposal, error) `perm:"write"`
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
@@ -1061,25 +1059,14 @@ func (s *FullNodeStub) ClientStatelessDeal(p0 context.Context, p1 *api.StartDeal
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientStartDealSxx(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) {
-	if s.Internal.ClientStartDealSxx == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.ClientStartDealSxx(p0, p1)
-}
-
-func (s *FullNodeStub) ClientStartDealSxx(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *FullNodeStruct) ClientStatelessDealSxx(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) {
+func (s *FullNodeStruct) ClientStatelessDealSxx(p0 context.Context, p1 *api.StartDealParams) (*network.Proposal, error) {
 	if s.Internal.ClientStatelessDealSxx == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.ClientStatelessDealSxx(p0, p1)
 }
 
-func (s *FullNodeStub) ClientStatelessDealSxx(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) {
+func (s *FullNodeStub) ClientStatelessDealSxx(p0 context.Context, p1 *api.StartDealParams) (*network.Proposal, error) {
 	return nil, ErrNotSupported
 }
 

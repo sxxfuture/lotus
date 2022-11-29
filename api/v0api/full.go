@@ -320,7 +320,6 @@ type FullNode interface {
 	ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) //perm:admin
 	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
 	ClientStatelessDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) //perm:write
-	ClientStartDealSxx(ctx context.Context, params *api.StartDealParams) (*network.Proposal, error) //perm:admin
 	ClientStatelessDealSxx(ctx context.Context, params *api.StartDealParams) (*network.Proposal, error) //perm:write
 	// ClientGetDealInfo returns the latest information about a given deal.
 	ClientGetDealInfo(context.Context, cid.Cid) (*api.DealInfo, error) //perm:read

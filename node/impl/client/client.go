@@ -322,33 +322,12 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 	return &resp.Response.Proposal, nil
 }
 
-func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*network.Proposal, error) {
-	return a.dealStarterSxx(ctx, params, false)
-}
-
-func (a *API) ClientStatelessDeal(ctx context.Context, params *api.StartDealParams) (*network.Proposal, error) {
-	return a.dealStarterSxx(ctx, params, true)
-}
-
-func (a *API) dealStarterSxx(ctx context.Context, params *api.StartDealParams, isStateless bool) (*network.Proposal, error) {
-	if isStateless {
-		if params.Data.TransferType != storagemarket.TTManual {
-			return nil, xerrors.Errorf("invalid transfer type %s for stateless storage deal", params.Data.TransferType)
-		}
-		if !params.EpochPrice.IsZero() {
-			return nil, xerrors.New("stateless storage deals can only be initiated with storage price of 0")
-		}
-	} else if params.Data.TransferType == storagemarket.TTGraphsync {
-		bs, onDone, err := a.dealBlockstore(params.Data.Root)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to find blockstore for root CID: %w", err)
-		}
-		if has, err := bs.Has(ctx, params.Data.Root); err != nil {
-			return nil, xerrors.Errorf("failed to query blockstore for root CID: %w", err)
-		} else if !has {
-			return nil, xerrors.Errorf("failed to find root CID in blockstore: %w", err)
-		}
-		onDone()
+func (a *API) ClientStatelessDealSxx(ctx context.Context, params *api.StartDealParams) (*network.Proposal, error) {
+	if params.Data.TransferType != storagemarket.TTManual {
+		return nil, xerrors.Errorf("invalid transfer type %s for stateless storage deal", params.Data.TransferType)
+	}
+	if !params.EpochPrice.IsZero() {
+		return nil, xerrors.New("stateless storage deals can only be initiated with storage price of 0")
 	}
 
 	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
@@ -387,40 +366,6 @@ func (a *API) dealStarterSxx(ctx context.Context, params *api.StartDealParams, i
 
 		blocksPerHour := 60 * 60 / build.BlockDelaySecs
 		dealStart = ts.Height() + abi.ChainEpoch(dealStartBufferHours*blocksPerHour) // TODO: Get this from storage ask
-	}
-
-	networkVersion, err := a.StateNetworkVersion(ctx, types.EmptyTSK)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get network version: %w", err)
-	}
-
-	st, err := miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get seal proof type: %w", err)
-	}
-
-	// regular flow
-	if !isStateless {
-		providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, *mi.PeerId, mi.Multiaddrs)
-
-		result, err := a.SMDealClient.ProposeStorageDeal(ctx, storagemarket.ProposeStorageDealParams{
-			Addr:          params.Wallet,
-			Info:          &providerInfo,
-			Data:          params.Data,
-			StartEpoch:    dealStart,
-			EndEpoch:      calcDealExpiration(params.MinBlocksDuration, md, dealStart),
-			Price:         params.EpochPrice,
-			Collateral:    params.ProviderCollateral,
-			Rt:            st,
-			FastRetrieval: params.FastRetrieval,
-			VerifiedDeal:  params.VerifiedDeal,
-		})
-
-		if err != nil {
-			return nil, xerrors.Errorf("failed to start deal: %w", err)
-		}
-
-		return &result.ProposalCid, nil
 	}
 
 	//
@@ -475,13 +420,6 @@ func (a *API) dealStarterSxx(ctx context.Context, params *api.StartDealParams, i
 		peerid = *params.Peerid
 		log.Infof("miner peerid %s/*", peerid)
 	}
-
-	dStream, err := network.NewFromLibp2pHost(a.Host,
-		// params duplicated from .../node/modules/client.go
-		// https://github.com/filecoin-project/lotus/pull/5961#discussion_r629768011
-		network.RetryParameters(time.Second, 5*time.Minute, 15, 5),
-	).NewDealStream(ctx, peerid)
-	// end
 
 	if err != nil {
 		return nil, xerrors.Errorf("opening dealstream to %s/%s failed: %w", params.Miner, *mi.PeerId, err)
