@@ -55,6 +55,7 @@ var sectorsRecoveryCmd = &cli.Command{
 		recoveryRestoreSectorCmd,
 		recoveryExportUnsealedFileCmd,
 		recoveryUnsealCmd,
+		recoveryaddpieceCmd,
 		recoverysealCmd,
 	},
 }
@@ -179,6 +180,74 @@ var recoveryUnsealCmd = &cli.Command{
 	},
 }
 
+var recoveryaddpieceCmd = &cli.Command{
+	Name:  "addpiece",
+	Usage: `addpiece the file`,
+	// ArgsUsage: "[output file path]",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "sector",
+			Usage: "sector number, i.e. 3880",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:   "miner",
+			Usage:  "miner address starting with f0 or t0, i.e. f01450",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "sector-size",
+			Value: "32GiB",
+			Usage: "size of the sectors in bytes, i.e. 2KiB",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "sector-storage",
+			Usage: "sector storage path",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "path",
+			Usage: "Pieces size of sector",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cliutil.ReqContext(cctx)
+
+		path := cctx.String("path")
+
+		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
+		if err != nil {
+			return err
+		}
+
+		spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), build.NewestNetworkVersion)
+		if err != nil {
+			return fmt.Errorf("failed to parse sector size: %w", err)
+		}
+
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		mid, err := address.IDFromAddress(maddr)
+		sector := cctx.Uint64("sector")
+		sref := storiface.SectorRef{
+			ID:        abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(sector)},
+			ProofType: spt,
+		}
+
+		workRepo := cctx.String("sector-storage")
+		ss := recovery.NewSectorSealer(workRepo)
+
+		// 开始seal
+		err = ss.ApToPc(ctx, sref, []abi.UnpaddedPieceSize{}, abi.PaddedPieceSize(abi.SectorSize(ssize)).Unpadded(), path)
+		if err != nil {
+			return fmt.Errorf("failed to PcToSealed: %w", err)
+		}
+
+		return nil
+	},
+}
+
 var recoverysealCmd = &cli.Command{
 	Name:  "seal-file",
 	Usage: `seal the unsealed file`,
@@ -222,66 +291,6 @@ var recoverysealCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cliutil.ReqContext(cctx)
-
-		// fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
-		// if err != nil {
-		// 	return xerrors.Errorf("GetFullNodeAPI error:", err)
-		// }
-		// defer closer()
-
-		// nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		// if err != nil {
-		// 	return xerrors.Errorf("GetStorageMinerAPI error:", err)
-		// }
-		// defer closer()
-
-		// maddr, err := address.NewFromString(cctx.String("miner"))
-		// if err != nil {
-		// 	return xerrors.Errorf("miner address error: %w", err)
-		// }
-
-		// sector := cctx.Uint64("sector")
-
-		// var si *recovery.SectorInfo
-		// if cctx.Bool("logpiece") {
-		// 	si, err = getSector(ctx, fullNodeApi, nodeApi, maddr, sector)
-		// } else {
-		// 	si, err = getSectorOnChain(ctx, fullNodeApi, nodeApi, maddr, sector)
-		// }
-		// if err != nil {
-		// 	return xerrors.Errorf("sector on chain error: %w", err)
-		// }
-
-		// ssize, err := units.RAMInBytes(cctx.String("sector-size"))
-		// if err != nil {
-		// 	return err
-		// }
-		// spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), build.NewestNetworkVersion)
-		// if err != nil {
-		// 	return fmt.Errorf("failed to parse sector size: %w", err)
-		// }
-		// mid, err := address.IDFromAddress(maddr)
-		// sref := storiface.SectorRef{
-		// 	ID:        abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(sector)},
-		// 	ProofType: spt,
-		// }
-
-		// // 开始seal
-		// workRepo := cctx.String("sector-storage")
-		// log.Info(workRepo)
-		// ss := recovery.NewSectorSealer(workRepo)
-
-		// if cctx.Bool("logpiece") {
-		// 	err = ss.PcToSealed(ctx, sref, si.SealTicket, si.Pieces, si.SealedCID.String())
-		// 	if err != nil {
-		// 		return fmt.Errorf("failed to PcToSealed: %w", err)
-		// 	}
-		// } else {
-		// 	err = ss.PcToSealed(ctx, sref, abi.SealRandomness(si.Ticket), si.Pieces, si.SealedCID.String())
-		// 	if err != nil {
-		// 		return fmt.Errorf("failed to PcToSealed: %w", err)
-		// 	}
-		// }
 
 		ticket := cctx.String("ticket")
 

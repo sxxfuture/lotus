@@ -286,6 +286,16 @@ func (ssb *SectorSealer) UnsealByOne(ctx context.Context, sector storiface.Secto
 	return true, nil
 }
 
+func (ssb *SectorSealer) ApToPc(ctx context.Context, sector storiface.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, worker_car_path string) (err error) {
+
+	_, err = ssb.sb.AddPieceOfPath(ctx, sector, existingPieceSizes, pieceSize, worker_car_path)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (ssb *SectorSealer) PcToSealed(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (err error) {
 
 	if ssb.ref != nil {
