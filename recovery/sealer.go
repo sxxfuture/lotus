@@ -286,7 +286,7 @@ func (ssb *SectorSealer) UnsealByOne(ctx context.Context, sector storiface.Secto
 	return true, nil
 }
 
-func (ssb *SectorSealer) PcToSealed(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo, sealedCID string) (err error) {
+func (ssb *SectorSealer) PcToSealed(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (err error) {
 
 	if ssb.ref != nil {
 		if ssb.ref.ID != sector.ID || ssb.ref.ProofType != sector.ProofType {
@@ -301,13 +301,9 @@ func (ssb *SectorSealer) PcToSealed(ctx context.Context, sector storiface.Sector
 		return err
 	}
 
-	cids, err := ssb.sb.SealPreCommit2(context.TODO(), sector, p1out)
+	_, err = ssb.sb.SealPreCommit2(context.TODO(), sector, p1out)
 	if err != nil {
 		return err
-	}
-
-	if sealedCID != cids.Sealed.String() {
-		return xerrors.Errorf("sealed cid mismatching!!! (sealedCID: %v, newSealedCID: %v)", sealedCID, ssb.cids.Sealed.String())
 	}
 
 	return nil

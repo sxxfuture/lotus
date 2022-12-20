@@ -26,6 +26,8 @@ import (
 	"os"
 
 	"github.com/urfave/cli/v2"
+	"strconv"
+	"strings"
 )
 
 /*
@@ -84,8 +86,18 @@ var recoveryUnsealCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:  "seal-file",
+			Name:  "unseal-file",
 			Usage: "seal file path",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "ticket",
+			Usage: "ticket of sector",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "commd",
+			Usage: "commd of sector",
 			Required: true,
 		},
 	},
@@ -95,37 +107,37 @@ var recoveryUnsealCmd = &cli.Command{
 		sector := cctx.Uint64("sector")
 
 		maddr, err := address.NewFromString(cctx.String("miner"))
-		if err != nil {
-			return xerrors.Errorf("miner address error: %w", err)
-		}
+		// if err != nil {
+		// 	return xerrors.Errorf("miner address error: %w", err)
+		// }
 
-		fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("GetFullNodeAPI error:", err)
-		}
-		defer closer()
+		// fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
+		// if err != nil {
+		// 	return xerrors.Errorf("GetFullNodeAPI error:", err)
+		// }
+		// defer closer()
 
-		storageMinerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("GetStorageMinerAPI error:", err)
-		}
-		defer closer()
+		// storageMinerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		// if err != nil {
+		// 	return xerrors.Errorf("GetStorageMinerAPI error:", err)
+		// }
+		// defer closer()
 
-		si, err := getSectorOnChain(ctx, fullNodeApi, storageMinerApi, maddr, sector)
-		if err != nil {
-			return xerrors.Errorf("sector on chain error: %w", err)
-		}
+		// si, err := getSectorOnChain(ctx, fullNodeApi, storageMinerApi, maddr, sector)
+		// if err != nil {
+		// 	return xerrors.Errorf("sector on chain error: %w", err)
+		// }
 
-		data, err := json.MarshalIndent(si, "", "  ")
-		if err != nil {
-			return err
-		}
-		fmt.Println(string(data))
+		// data, err := json.MarshalIndent(si, "", "  ")
+		// if err != nil {
+		// 	return err
+		// }
+		// fmt.Println(string(data))
 
 		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
-		if err != nil {
-			return err
-		}
+		// if err != nil {
+		// 	return err
+		// }
 		spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), build.NewestNetworkVersion)
 		sectorSize, err := spt.SectorSize()
 		if err != nil {
@@ -133,6 +145,9 @@ var recoveryUnsealCmd = &cli.Command{
 		}
 
 		mid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return err
+		}
 		sref := storiface.SectorRef{
 			ID:        abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(sector)},
 			ProofType: spt,
@@ -142,14 +157,23 @@ var recoveryUnsealCmd = &cli.Command{
 		log.Info(workRepo)
 		ss := recovery.NewSectorSealer(workRepo)
 
-		sealpath := cctx.String("seal-file")
+		ticket := cctx.String("ticket")
+
+		comm_d := cctx.String("commd")
+		commd, err := cid.Decode(comm_d)
+		if err != nil { // nolint
+			log.Errorf("1")
+			return err
+		}
+
+		unsealfile := cctx.String("unseal-file")
+
 		// 开始unseal
-		log.Infof("sectorsize [%d] ", sectorSize)
-		log.Infof("sectorunpadded [%d] ", abi.PaddedPieceSize(sectorSize).Unpadded())
-		_, err = ss.UnsealByOne(ctx, sref, abi.PaddedPieceSize(sectorSize).Unpadded(), abi.SealRandomness(si.Ticket), si.CommD, sealpath, workRepo)
+		_, err = ss.UnsealByOne(ctx, sref, abi.PaddedPieceSize(sectorSize).Unpadded(), abi.SealRandomness(Decode(ticket)), commd, unsealfile, workRepo)
 		if err != nil {
 			return fmt.Errorf("failed to UnsealByOne: %w", err)
 		}
+
 
 		return nil
 	},
@@ -185,68 +209,118 @@ var recoverysealCmd = &cli.Command{
 			Name:  "logpiece",
 			Usage: "use piece in log",
 		},
+		&cli.StringFlag{
+			Name:  "ticket",
+			Usage: "ticket of sector",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "pieces",
+			Usage: "Pieces size of sector",
+			Required: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cliutil.ReqContext(cctx)
 
-		fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("GetFullNodeAPI error:", err)
-		}
-		defer closer()
+		// fullNodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
+		// if err != nil {
+		// 	return xerrors.Errorf("GetFullNodeAPI error:", err)
+		// }
+		// defer closer()
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("GetStorageMinerAPI error:", err)
-		}
-		defer closer()
+		// nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		// if err != nil {
+		// 	return xerrors.Errorf("GetStorageMinerAPI error:", err)
+		// }
+		// defer closer()
 
-		maddr, err := address.NewFromString(cctx.String("miner"))
-		if err != nil {
-			return xerrors.Errorf("miner address error: %w", err)
-		}
+		// maddr, err := address.NewFromString(cctx.String("miner"))
+		// if err != nil {
+		// 	return xerrors.Errorf("miner address error: %w", err)
+		// }
 
-		sector := cctx.Uint64("sector")
+		// sector := cctx.Uint64("sector")
 
-		var si *recovery.SectorInfo
-		if cctx.Bool("logpiece") {
-			si, err = getSector(ctx, fullNodeApi, nodeApi, maddr, sector)
-		} else {
-			si, err = getSectorOnChain(ctx, fullNodeApi, nodeApi, maddr, sector)
-		}
+		// var si *recovery.SectorInfo
+		// if cctx.Bool("logpiece") {
+		// 	si, err = getSector(ctx, fullNodeApi, nodeApi, maddr, sector)
+		// } else {
+		// 	si, err = getSectorOnChain(ctx, fullNodeApi, nodeApi, maddr, sector)
+		// }
+		// if err != nil {
+		// 	return xerrors.Errorf("sector on chain error: %w", err)
+		// }
+
+		// ssize, err := units.RAMInBytes(cctx.String("sector-size"))
+		// if err != nil {
+		// 	return err
+		// }
+		// spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), build.NewestNetworkVersion)
+		// if err != nil {
+		// 	return fmt.Errorf("failed to parse sector size: %w", err)
+		// }
+		// mid, err := address.IDFromAddress(maddr)
+		// sref := storiface.SectorRef{
+		// 	ID:        abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(sector)},
+		// 	ProofType: spt,
+		// }
+
+		// // 开始seal
+		// workRepo := cctx.String("sector-storage")
+		// log.Info(workRepo)
+		// ss := recovery.NewSectorSealer(workRepo)
+
+		// if cctx.Bool("logpiece") {
+		// 	err = ss.PcToSealed(ctx, sref, si.SealTicket, si.Pieces, si.SealedCID.String())
+		// 	if err != nil {
+		// 		return fmt.Errorf("failed to PcToSealed: %w", err)
+		// 	}
+		// } else {
+		// 	err = ss.PcToSealed(ctx, sref, abi.SealRandomness(si.Ticket), si.Pieces, si.SealedCID.String())
+		// 	if err != nil {
+		// 		return fmt.Errorf("failed to PcToSealed: %w", err)
+		// 	}
+		// }
+
+		ticket := cctx.String("ticket")
+
+		pieces := cctx.String("pieces")
+
+		var pieceinfo abi.PieceInfo
+		var piecelist = make([]abi.PieceInfo, 0)
+		err := json.Unmarshal([]byte(pieces), &pieceinfo)
 		if err != nil {
-			return xerrors.Errorf("sector on chain error: %w", err)
+			return err
 		}
+		log.Errorf("%+v", pieceinfo)
+		piecelist = append(piecelist, pieceinfo)
 
 		ssize, err := units.RAMInBytes(cctx.String("sector-size"))
 		if err != nil {
 			return err
 		}
+
 		spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), build.NewestNetworkVersion)
 		if err != nil {
 			return fmt.Errorf("failed to parse sector size: %w", err)
 		}
+
+		maddr, err := address.NewFromString(cctx.String("miner"))
 		mid, err := address.IDFromAddress(maddr)
+		sector := cctx.Uint64("sector")
 		sref := storiface.SectorRef{
 			ID:        abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(sector)},
 			ProofType: spt,
 		}
 
-		// 开始seal
 		workRepo := cctx.String("sector-storage")
-		log.Info(workRepo)
 		ss := recovery.NewSectorSealer(workRepo)
 
-		if cctx.Bool("logpiece") {
-			err = ss.PcToSealed(ctx, sref, si.SealTicket, si.Pieces, si.SealedCID.String())
-			if err != nil {
-				return fmt.Errorf("failed to PcToSealed: %w", err)
-			}
-		} else {
-			err = ss.PcToSealed(ctx, sref, abi.SealRandomness(si.Ticket), si.Pieces, si.SealedCID.String())
-			if err != nil {
-				return fmt.Errorf("failed to PcToSealed: %w", err)
-			}
+		// 开始seal
+		err = ss.PcToSealed(ctx, sref, abi.SealRandomness(Decode(ticket)), piecelist)
+		if err != nil {
+			return fmt.Errorf("failed to PcToSealed: %w", err)
 		}
 
 		return nil
@@ -841,4 +915,16 @@ func getSectorOnChain(ctx context.Context,fullNodeApi v0api.FullNode, storageMin
 
 func getSectorMetaFile(maddr address.Address,sector uint64) (string,error) {
 	return homedir.Expand(maddr.String() + "-" + fmt.Sprintf("%d", sector) + "-meta" + ".json")
+}
+
+func Decode(src string) []byte {
+	src_list := strings.Split(src, "")
+	var result []byte
+	for i := 0; i < len(src_list); i = i + 2 {
+        s := src_list[i] + src_list[i+1]
+        sr,_ := strconv.ParseUint(string(s), 16, 32)
+		result = append(result, byte(sr))
+	}
+
+	return result
 }

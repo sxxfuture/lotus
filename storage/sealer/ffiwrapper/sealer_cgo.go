@@ -428,6 +428,193 @@ func (sb *Sealer) AcquireSectorKeyOrRegenerate(ctx context.Context, sector stori
 	return sb.sectors.AcquireSector(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage)
 }
 
+func (sb *Sealer) UnsealPieceOfSxx(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid, sealpath string) error {
+
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+	maxPieceSize := abi.PaddedPieceSize(ssize)
+
+	log.Warnf("maxPieceSize is %d;", maxPieceSize)
+
+	// try finding existing
+	unsealedPath, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed, storiface.FTNone, storiface.PathStorage)
+	var pf *partialfile.PartialFile
+
+	switch {
+	case xerrors.Is(err, storiface.ErrSectorNotFound):
+		unsealedPath, done, err = sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTUnsealed, storiface.PathStorage)
+		if err != nil {
+			return xerrors.Errorf("acquire unsealed sector path (allocate): %w", err)
+		}
+		defer done()
+
+		pf, err = partialfile.CreatePartialFile(maxPieceSize, unsealedPath.Unsealed)
+		if err != nil {
+			return xerrors.Errorf("create unsealed file: %w", err)
+		}
+
+	case err == nil:
+		defer done()
+
+		pf, err = partialfile.OpenPartialFile(maxPieceSize, unsealedPath.Unsealed)
+		if err != nil {
+			return xerrors.Errorf("opening partial file: %w", err)
+		}
+	default:
+		return xerrors.Errorf("acquire unsealed sector path (existing): %w", err)
+	}
+	defer pf.Close() // nolint
+
+	allocated, err := pf.Allocated()
+	if err != nil {
+		return xerrors.Errorf("getting bitruns of allocated data: %w", err)
+	}
+
+	toUnseal, err := computeUnsealRanges(allocated, offset, size)
+	if err != nil {
+		return xerrors.Errorf("computing unseal ranges: %w", err)
+	}
+
+	if !toUnseal.HasNext() {
+		log.Infof("to unseal unhasnext")
+		// return nil
+		return xerrors.Errorf("to unseal unhasnext")
+	}
+
+	// If piece data stored in updated replica decode whole sector
+	decoded, err := sb.tryDecodeUpdatedReplica(ctx, sector, commd, unsealedPath.Unsealed, randomness)
+	if err != nil {
+		return xerrors.Errorf("decoding sector from replica: %w", err)
+	}
+	if decoded {
+		return pf.MarkAllocated(0, maxPieceSize)
+	}
+
+	sealed, err := os.OpenFile(sealpath, os.O_RDONLY, 0644)
+
+	if err != nil {
+		return xerrors.Errorf("opening sealed file: %w", err)
+	}
+	defer sealed.Close() // nolint
+
+	var at, nextat abi.PaddedPieceSize
+	first := true
+	for first || toUnseal.HasNext() {
+		first = false
+
+		piece, err := toUnseal.NextRun()
+		if err != nil {
+			return xerrors.Errorf("getting next range to unseal: %w", err)
+		}
+
+		at = nextat
+		nextat += abi.PaddedPieceSize(piece.Len)
+
+		if !piece.Val {
+			continue
+		}
+
+		// 得到指定范围内的writer对象
+		out, err := pf.Writer(offset.Padded(), size.Padded())
+		if err != nil {
+			return xerrors.Errorf("getting partial file writer: %w", err)
+		}
+
+		// <eww>
+		opr, opw, err := os.Pipe()
+		if err != nil {
+			return xerrors.Errorf("creating out pipe: %w", err)
+		}
+
+		var perr error
+		outWait := make(chan struct{})
+
+		{
+			go func() {
+				defer close(outWait)
+				defer opr.Close() // nolint
+
+				padwriter := fr32.NewPadWriter(out)
+
+				bsize := uint64(size.Padded())
+				if bsize > uint64(runtime.NumCPU())*fr32.MTTresh {
+					bsize = uint64(runtime.NumCPU()) * fr32.MTTresh
+				}
+
+				// 返回指定缓存区大小的writer
+				bw := bufio.NewWriterSize(padwriter, int(abi.PaddedPieceSize(bsize).Unpadded()))
+
+				// 从opr复制 size 个字节到 bw
+				_, err := io.CopyN(bw, opr, int64(size))
+				if err != nil {
+					perr = xerrors.Errorf("copying data: %w", err)
+					return
+				}
+
+				// 将所有缓冲区数据写入底层 io.Writer
+				if err := bw.Flush(); err != nil {
+					perr = xerrors.Errorf("flushing unpadded data: %w", err)
+					return
+				}
+
+				if err := padwriter.Close(); err != nil {
+					perr = xerrors.Errorf("closing padwriter: %w", err)
+					return
+				}
+			}()
+		}
+		// </eww>
+
+		// piece.Len is 34359738368
+		log.Warnf("piece.Len is %d;", piece.Len)
+
+		// TODO: This may be possible to do in parallel
+		err = ffi.UnsealRange(sector.ProofType,
+			unsealedPath.Cache,
+			sealed,
+			opw,	// unseal path
+			sector.ID.Number,
+			sector.ID.Miner,
+			randomness,
+			commd,
+			uint64(at.Unpadded()),
+			uint64(abi.PaddedPieceSize(piece.Len).Unpadded()))
+
+		_ = opw.Close()
+
+		if err != nil {
+			return xerrors.Errorf("unseal range: %w", err)
+		}
+
+		select {
+		case <-outWait:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+
+		if perr != nil {
+			return xerrors.Errorf("piping output to unsealed file: %w", perr)
+		}
+
+		log.Warnf("befor MarkAllocated")
+
+		// at = 0
+		// piece.Len = 34359738368
+
+		if err := pf.MarkAllocated(storiface.PaddedByteIndex(at), abi.PaddedPieceSize(piece.Len)); err != nil {
+			return xerrors.Errorf("marking unsealed range as allocated: %w", err)
+		}
+
+		if !toUnseal.HasNext() {
+			break
+		}
+	}
+
+	return nil
+}
+
 func (sb *Sealer) UnsealPieceOfOnePath(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid, sealpath string, cachepath string) error {
 
 	ssize, err := sector.ProofType.SectorSize()
