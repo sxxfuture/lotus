@@ -65,6 +65,7 @@ type TargetAPI interface {
 	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
 	MsigGetVestingSchedule(context.Context, address.Address, types.TipSetKey) (api.MsigVesting, error)
 	MsigGetPending(ctx context.Context, addr address.Address, ts types.TipSetKey) ([]*api.MsigTransaction, error)
+	MsigGetPendingOfSxx(ctx context.Context, addr address.Address, ts types.TipSetKey) ([]*api.MsigTransactionOfSxx, error)
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error)
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
@@ -398,6 +399,14 @@ func (gw *Node) MsigGetPending(ctx context.Context, addr address.Address, tsk ty
 		return nil, err
 	}
 	return gw.target.MsigGetPending(ctx, addr, tsk)
+}
+
+func (gw *Node) MsigGetPendingOfSxx(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.MsigTransactionOfSxx, error) {
+	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+
+	return gw.target.MsigGetPendingOfSxx(ctx, addr, tsk)
 }
 
 func (gw *Node) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {

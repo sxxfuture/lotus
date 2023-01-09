@@ -49,12 +49,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"reflect"
 )
 
 type StateModuleAPI interface {
 	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
 	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
 	MsigGetPending(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.MsigTransaction, error)
+	MsigGetPendingOfSxx(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.MsigTransactionOfSxx, error)
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error)
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
@@ -1301,6 +1304,57 @@ func (m *StateModule) MsigGetPending(ctx context.Context, addr address.Address, 
 	}
 
 	return out, nil
+}
+
+func (m *StateModule) MsigGetPendingOfSxx(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.MsigTransactionOfSxx, error) {
+	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	act, err := m.StateManager.LoadActor(ctx, addr, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load multisig actor: %w", err)
+	}
+	msas, err := multisig.Load(m.Chain.ActorStore(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load multisig actor state: %w", err)
+	}
+
+	var out2 = []*api.MsigTransactionOfSxx{}
+	if err := msas.ForEachPendingTxn(func(id int64, txn multisig.Transaction) error {
+		targAct, err := m.StateGetActor(ctx, txn.To, types.EmptyTSK)
+		paramStr := fmt.Sprintf("%x", txn.Params)
+		if err != nil {
+			return xerrors.Errorf("could not get actor: %w", err)
+		}
+		method := filcns.NewActorRegistry().Methods[targAct.Code][txn.Method] // TODO: use remote map
+		if txn.Method != 0 {
+			ptyp := reflect.New(method.Params.Elem()).Interface().(cbg.CBORUnmarshaler)
+			if err := ptyp.UnmarshalCBOR(bytes.NewReader(txn.Params)); err == nil {
+				b, err := json.Marshal(ptyp)
+				if err != nil {
+					return xerrors.Errorf("could not json marshal parameter type: %w", err)
+				}
+
+				paramStr = string(b)
+			}
+		}
+		out2 = append(out2, &api.MsigTransactionOfSxx{
+			ID:     id,
+			To:     txn.To,
+			Value:  txn.Value,
+			Method: txn.Method,
+			Params: paramStr,
+
+			Approved: txn.Approved,
+		})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return out2, nil
 }
 
 var initialPledgeNum = types.NewInt(110)

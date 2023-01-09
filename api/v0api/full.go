@@ -648,6 +648,8 @@ type FullNode interface {
 	//appear here.
 	MsigGetPending(context.Context, address.Address, types.TipSetKey) ([]*api.MsigTransaction, error) //perm:read
 
+	MsigGetPendingOfSxx(context.Context, address.Address, types.TipSetKey) ([]*api.MsigTransactionOfSxx, error) //perm:read
+
 	// MsigCreate creates a multisig wallet
 	// It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
 	//<initial balance>, <sender address of the create msg>, <gas price>

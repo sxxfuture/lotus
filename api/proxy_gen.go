@@ -293,6 +293,8 @@ type FullNodeStruct struct {
 
 		MsigGetPending func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransaction, error) `perm:"read"`
 
+		MsigGetPendingOfSxx func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransactionOfSxx, error) `perm:"read"`
+
 		MsigGetVested func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		MsigGetVestingSchedule func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) `perm:"read"`
@@ -554,6 +556,8 @@ type GatewayStruct struct {
 		MsigGetAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) ``
 
 		MsigGetPending func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransaction, error) ``
+
+		MsigGetPendingOfSxx func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransactionOfSxx, error) ``
 
 		MsigGetVested func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) ``
 
@@ -2207,6 +2211,17 @@ func (s *FullNodeStub) MsigGetPending(p0 context.Context, p1 address.Address, p2
 	return *new([]*MsigTransaction), ErrNotSupported
 }
 
+func (s *FullNodeStruct) MsigGetPendingOfSxx(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransactionOfSxx, error) {
+	if s.Internal.MsigGetPendingOfSxx == nil {
+		return *new([]*MsigTransactionOfSxx), ErrNotSupported
+	}
+	return s.Internal.MsigGetPendingOfSxx(p0, p1, p2)
+}
+
+func (s *FullNodeStub) MsigGetPendingOfSxx(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransactionOfSxx, error) {
+	return *new([]*MsigTransactionOfSxx), ErrNotSupported
+}
+
 func (s *FullNodeStruct) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
 	if s.Internal.MsigGetVested == nil {
 		return *new(types.BigInt), ErrNotSupported
@@ -3591,6 +3606,17 @@ func (s *GatewayStruct) MsigGetPending(p0 context.Context, p1 address.Address, p
 
 func (s *GatewayStub) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransaction, error) {
 	return *new([]*MsigTransaction), ErrNotSupported
+}
+
+func (s *GatewayStruct) MsigGetPendingOfSxx(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransactionOfSxx, error) {
+	if s.Internal.MsigGetPendingOfSxx == nil {
+		return *new([]*MsigTransactionOfSxx), ErrNotSupported
+	}
+	return s.Internal.MsigGetPendingOfSxx(p0, p1, p2)
+}
+
+func (s *GatewayStub) MsigGetPendingOfSxx(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransactionOfSxx, error) {
+	return *new([]*MsigTransactionOfSxx), ErrNotSupported
 }
 
 func (s *GatewayStruct) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
