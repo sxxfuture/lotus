@@ -161,6 +161,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gotest.tools v2.2.0+incompatible
+	github.com/moran666666/sector-counter v0.0.0
 )
 
 require (
@@ -348,3 +349,7 @@ require (
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+
+replace github.com/filecoin-project/go-fil-markets => ./extern/sxx-go-fil-markets@v1.24.0-v17
+
+replace github.com/moran666666/sector-counter => ./extern/moran666666/sector-counter

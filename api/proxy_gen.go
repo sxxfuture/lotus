@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	marketnetwork "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -215,6 +216,8 @@ type FullNodeStruct struct {
 		ClientStartDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"admin"`
 
 		ClientStatelessDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"write"`
+
+		ClientStatelessDealSxx func(p0 context.Context, p1 *StartDealParams) (*marketnetwork.Proposal, error) `perm:"write"`
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
@@ -685,6 +688,8 @@ type StorageMinerStruct struct {
 
 		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
+		CheckProve func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
+
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
 
 		ComputeProof func(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) `perm:"read"`
@@ -720,6 +725,8 @@ type StorageMinerStruct struct {
 		DealsConsiderVerifiedStorageDeals func(p0 context.Context) (bool, error) `perm:"admin"`
 
 		DealsImportData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"admin"`
+
+		DealsImportDataOfSxx func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"admin"`
 
 		DealsList func(p0 context.Context) ([]*MarketDeal, error) `perm:"admin"`
 
@@ -969,6 +976,10 @@ type WalletStub struct {
 type WorkerStruct struct {
 	Internal struct {
 		AddPiece func(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storiface.Data) (storiface.CallID, error) `perm:"admin"`
+
+		// add by lin
+        AddPieceOfSxx func(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 string) (storiface.CallID, error) `perm:"admin"`
+        // end
 
 		DataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (storiface.CallID, error) `perm:"admin"`
 
@@ -1781,6 +1792,17 @@ func (s *FullNodeStruct) ClientStatelessDeal(p0 context.Context, p1 *StartDealPa
 }
 
 func (s *FullNodeStub) ClientStatelessDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) ClientStatelessDealSxx(p0 context.Context, p1 *StartDealParams) (*marketnetwork.Proposal, error) {
+	if s.Internal.ClientStatelessDealSxx == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ClientStatelessDealSxx(p0, p1)
+	}
+
+func (s *FullNodeStub) ClientStatelessDealSxx(p0 context.Context, p1 *StartDealParams) (*marketnetwork.Proposal, error) {
 	return nil, ErrNotSupported
 }
 
@@ -4171,6 +4193,17 @@ func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPo
 	return *new(map[abi.SectorNumber]string), ErrNotSupported
 }
 
+func (s *StorageMinerStruct) CheckProve(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) {
+	if s.Internal.CheckProve == nil {
+		return *new(map[abi.SectorNumber]string), ErrNotSupported
+	}
+	return s.Internal.CheckProve(p0, p1, p2, p3, p4)
+}
+
+func (s *StorageMinerStub) CheckProve(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) {
+	return *new(map[abi.SectorNumber]string), ErrNotSupported
+}
+
 func (s *StorageMinerStruct) ComputeDataCid(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) {
 	if s.Internal.ComputeDataCid == nil {
 		return *new(abi.PieceInfo), ErrNotSupported
@@ -4180,6 +4213,17 @@ func (s *StorageMinerStruct) ComputeDataCid(p0 context.Context, p1 abi.UnpaddedP
 
 func (s *StorageMinerStub) ComputeDataCid(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) {
 	return *new(abi.PieceInfo), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DealsImportDataOfSxx(p0 context.Context, p1 cid.Cid, p2 string) error {
+	if s.Internal.DealsImportDataOfSxx == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.DealsImportDataOfSxx(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) DealsImportDataOfSxx(p0 context.Context, p1 cid.Cid, p2 string) error {
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ComputeProof(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) {
@@ -5633,6 +5677,19 @@ func (s *WalletStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []b
 func (s *WalletStub) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) {
 	return nil, ErrNotSupported
 }
+
+// add by lin
+func (s *WorkerStruct) AddPieceOfSxx(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 string) (storiface.CallID, error) {
+	if s.Internal.AddPieceOfSxx == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
+	return s.Internal.AddPieceOfSxx(p0, p1, p2, p3, p4)
+}
+
+func (s *WorkerStub) AddPieceOfSxx(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 string) (storiface.CallID, error) {
+	return *new(storiface.CallID), ErrNotSupported
+}
+// end
 
 func (s *WorkerStruct) AddPiece(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storiface.Data) (storiface.CallID, error) {
 	if s.Internal.AddPiece == nil {
