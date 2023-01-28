@@ -58,6 +58,21 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Ad
 	}, nil
 }
 
+func (a *MsigAPI) MsigCreateOfSxx(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*types.Message, error) {
+
+	mb, err := a.messageBuilder(ctx, src)
+	if err != nil {
+		return nil, err
+	}
+
+	msg, err := mb.Create(addrs, req, 0, duration, val)
+	if err != nil {
+		return nil, err
+	}
+
+	return msg, nil
+}
+
 func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*api.MessagePrototype, error) {
 
 	mb, err := a.messageBuilder(ctx, src)
