@@ -652,7 +652,7 @@ type FullNode interface {
 	// It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
 	//<initial balance>, <sender address of the create msg>, <gas price>
 	MsigCreate(context.Context, uint64, []address.Address, abi.ChainEpoch, types.BigInt, address.Address, types.BigInt) (*MessagePrototype, error) //perm:sign
-	MsigCreateOfSxx(context.Context, uint64, []address.Address, abi.ChainEpoch, types.BigInt, address.Address, types.BigInt) (*types.Message, error) //perm:sign
+	MsigCreateOfSxx(context.Context, uint64, []address.Address, abi.ChainEpoch, address.Address) (*types.Message, error) //perm:sign
 
 	// MsigPropose proposes a multisig message
 	// It takes the following params: <multisig address>, <recipient address>, <value to transfer>,

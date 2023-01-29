@@ -288,7 +288,7 @@ type FullNodeStruct struct {
 		MsigCancelTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) `perm:"sign"`
 
 		MsigCreate func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*MessagePrototype, error) `perm:"sign"`
-		MsigCreateOfSxx func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*types.Message, error) `perm:"sign"`
+		MsigCreateOfSxx func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 address.Address) (*types.Message, error) `perm:"sign"`
 
 
 		MsigGetAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) `perm:"read"`
@@ -2191,14 +2191,14 @@ func (s *FullNodeStub) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Ad
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) MsigCreateOfSxx(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*types.Message, error) {
+func (s *FullNodeStruct) MsigCreateOfSxx(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 address.Address) (*types.Message, error) {
 	if s.Internal.MsigCreateOfSxx == nil {
 		return nil, ErrNotSupported
 	}
-	return s.Internal.MsigCreateOfSxx(p0, p1, p2, p3, p4, p5, p6)
+	return s.Internal.MsigCreateOfSxx(p0, p1, p2, p3, p4)
 }
 
-func (s *FullNodeStub) MsigCreateOfSxx(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*types.Message, error) {
+func (s *FullNodeStub) MsigCreateOfSxx(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 address.Address) (*types.Message, error) {
 	return nil, ErrNotSupported
 }
 
