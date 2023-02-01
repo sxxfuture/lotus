@@ -365,7 +365,7 @@ func (p *Provider) HandleQueryStream(stream rmnet.RetrievalQueryStream) {
 	}
 	log.Errorf("zlin: Retrieval query: PayloadCID: %+v", query.PayloadCID)
 	log.Errorf("zlin: Retrieval query: mineraddress: %+v", p.minerAddress)
-	sql := fmt.Sprintf("SELECT piece_cid FROM db_deal WHERE payload_cid = '%+v' AND deal_provider = '%+v'", query.PayloadCID, p.minerAddress)
+	sql := fmt.Sprintf("SELECT piece_cid FROM db_deal WHERE payload_cid = '%+v' AND deal_provider = '%+v' LIMIT 1", query.PayloadCID, p.minerAddress)
 	row := db.QueryRow(sql)
 	var piece_cid string
 	row.Scan(&piece_cid)

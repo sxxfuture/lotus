@@ -102,7 +102,7 @@ func (p *pieceProvider) tryReadUnsealedPieceOfSxx(ctx context.Context, pc cid.Ci
 	} else {
 		log.Errorf("数据库连接成功")                             //连接成功
 	}
-	sql := fmt.Sprintf("SELECT data_cid FROM db_car WHERE piece_cid = '%+v'", pc)
+	sql := fmt.Sprintf("SELECT data_cid FROM db_car WHERE piece_cid = '%+v' LIMIT 1", pc)
 	row := db.QueryRow(sql)
 	var data_cid string
 	row.Scan(&data_cid)

@@ -180,7 +180,7 @@ func (rv *ProviderRequestValidator) acceptDealOfSxx(deal *retrievalmarket.Provid
 	} else {
 		log.Errorf("数据库连接成功")                             //连接成功
 	}
-	sql := fmt.Sprintf("SELECT piece_cid FROM db_car WHERE data_cid = '%+v'", deal.PayloadCID)
+	sql := fmt.Sprintf("SELECT piece_cid FROM db_car WHERE data_cid = '%+v' LIMIT 1", deal.PayloadCID)
 	row := db.QueryRow(sql)
 	var piece_cid string
 	row.Scan(&piece_cid)
