@@ -96,9 +96,12 @@ var restoreCmd = &cli.Command{
 }
 
 func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfig *paths.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi api.MinerInfo) error) error {
-	if cctx.NArg() != 1 {
+
+	// change by pan
+	if cctx.NArg() < 1 {
 		return lcli.IncorrectNumArgs(cctx)
 	}
+	// end
 
 	log.Info("Trying to connect to full node RPC")
 
@@ -246,6 +249,15 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 
 	bar.Start()
 	err = backupds.RestoreInto(br, mds)
+
+	// add by pan
+	if cctx.Args().Len() > 1 {
+		for l := 1; l < cctx.Args().Len(); l++ {
+			err = handleRestore(cctx.Args().Get(l), bar, mds)
+		}
+	}
+	// end
+
 	bar.Finish()
 
 	if err != nil {
@@ -301,3 +313,17 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 
 	return after(api, maddr, peerid, mi)
 }
+
+// add by pan
+
+func handleRestore(path string, bar *pb.ProgressBar, mds datastore.Batching) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return xerrors.Errorf("opening backup file: %w", err)
+	}
+	defer f.Close() // nolint:errcheck
+	br := bar.NewProxyReader(f)
+	return backupds.RestoreInto(br, mds)
+}
+
+// end
