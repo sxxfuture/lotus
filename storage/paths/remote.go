@@ -601,6 +601,7 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 
 			return func(startOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
 				// don't reuse between readers unless closed
+				log.Errorf("zlin startOffsetAligned %+v", startOffsetAligned)
 				f := pf
 				pf = nil
 
@@ -611,6 +612,7 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 					}
 					log.Debugf("local partial file (re)opened %s (+%d,%d)", path, offset, size)
 				}
+				log.Errorf("zlin reader %+v - %+v", storiface.PaddedByteIndex(offset)+startOffsetAligned, size-abi.PaddedPieceSize(startOffsetAligned))
 
 				r, err := r.pfHandler.Reader(f, storiface.PaddedByteIndex(offset)+startOffsetAligned, size-abi.PaddedPieceSize(startOffsetAligned))
 				if err != nil {

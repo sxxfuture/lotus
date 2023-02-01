@@ -136,13 +136,13 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mo
 		// Throttle this path to avoid flooding the storage subsystem.
 		var reader mount.Reader
 		err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
-			isUnsealed, err := m.sa.IsUnsealed(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
-			if err != nil {
-				return fmt.Errorf("failed to check if sector %d for deal %d was unsealed: %w", deal.SectorID, deal.DealID, err)
-			}
-			if !isUnsealed {
-				return nil
-			}
+			// isUnsealed, err := m.sa.IsUnsealed(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+			// if err != nil {
+			// 	return fmt.Errorf("failed to check if sector %d for deal %d was unsealed: %w", deal.SectorID, deal.DealID, err)
+			// }
+			// if !isUnsealed {
+			// 	return nil
+			// }
 			// Because we know we have an unsealed copy, this UnsealSector call will actually not perform any unsealing.
 			reader, err = m.sa.UnsealSectorAt(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
 			return err

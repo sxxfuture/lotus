@@ -5,6 +5,15 @@ import (
 	"context"
 	"io"
 
+	"os"
+	"fmt"
+	"net"
+	"time"
+
+	gossh "golang.org/x/crypto/ssh"
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -19,6 +28,19 @@ import (
 type Unsealer interface {
 	// SectorsUnsealPiece will Unseal a Sealed sector file for the given sector.
 	SectorsUnsealPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error
+}
+
+type SshManager struct {
+	/** ip */
+	Host string `json:"host"`
+	/** 端口 */
+	Port int `json:"port"`
+	/** 用户 */
+	Username string `json:"user"`
+	/** 密码 */
+	Password string `json:"password"`
+	/**  */
+	client *gossh.Client
 }
 
 type PieceProvider interface {
@@ -67,6 +89,154 @@ func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storiface.SectorR
 	return p.storage.CheckIsUnsealed(ctxLock, sector, abi.PaddedPieceSize(offset.Padded()), size.Padded())
 }
 
+func (p *pieceProvider) tryReadUnsealedPieceOfSxx(ctx context.Context, pc cid.Cid, sector storiface.SectorRef, pieceOffset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (mount.Reader, error) {
+	// acquire a lock purely for reading unsealed sectors
+	log.Errorf("zlin: tryReadUnsealedPiece")
+	ctx, cancel := context.WithCancel(ctx)
+
+	db, _ := sql.Open("mysql", "root:sxxfilweb@(10.100.248.32:3306)/deal")
+	defer db.Close()
+	dberr := db.Ping()
+	if dberr != nil {
+		log.Errorf("数据库连接失败 %+v", dberr)                  //连接失败
+	} else {
+		log.Errorf("数据库连接成功")                             //连接成功
+	}
+	sql := fmt.Sprintf("SELECT data_cid FROM db_car WHERE piece_cid = '%+v'", pc)
+	row := db.QueryRow(sql)
+	var data_cid string
+	row.Scan(&data_cid)
+	if data_cid == "" {
+		return nil, xerrors.Errorf("can't read car file")
+		//log.Errorf("mysql %+v", data_cid)
+	}
+
+	// var cardir = "/realdata01/quickbuild/output"
+	var cardir = os.Getenv("SXX_QUICKBUILD_DIR")
+
+	carpath := cardir + "/" + data_cid + ".car"
+
+	// 2k测试专用
+        // data_cid = "bafybeidd5nbn644m3sjwnu7kbrtvk57ez3co7w7onsm4nc25cfcck24q7u"
+        // data_cid = "bafybeidd5nbn644m3sjwnu7kbrtvk57ez3co7w7onsm4nc25cfcck24q7u"
+        // 2k测试专用
+        // carpath = "/realdata04/realdata_backup/Mianmian/11-29-car-now/baga6ea4seaqcyft4ujl3q3xcxqjlr5n3byrh6s3leyxqo7nymi3rca4joqck2eq.car"
+
+	err := p.GenerateCarFile(carpath, data_cid)
+	if err !=nil {
+		return nil, xerrors.Errorf("can't read car file: %w", err)
+	}
+
+	pr, err := (&pieceReader{
+		ctx: ctx,
+		getReader: func(ctx context.Context, startOffset uint64) (io.ReadCloser, error) {
+
+			log.Errorf("zlin : 读取%+v.car文件", pc)
+
+			content, err := os.Open(carpath)
+			if err != nil {
+				return nil, xerrors.Errorf("test read car file: %w", err)
+			}
+
+			log.Errorf("zlin getReader %+v", startOffset)
+
+			content.Seek(int64(startOffset), io.SeekStart)
+
+			return struct {
+				io.Reader
+				io.Closer
+			}{
+				Reader: content,
+				Closer: funcCloser(func() error {
+					return content.Close()
+				}),
+			}, nil
+		},
+		len:      size,
+		onClose:  cancel,
+		pieceCid: pc,
+	}).init()
+	if err != nil || pr == nil { // pr == nil to make sure we don't return typed nil
+		cancel()
+		return nil, err
+	}
+
+	return pr, err
+}
+
+func (p *pieceProvider) GenerateCarFile(path string, data_cid string) error {
+	_, err := os.Stat(path)
+	if err != nil {
+		log.Infow("创建car文件")
+		err = p.createCar(data_cid)
+		if err != nil {
+			log.Errorf("创建car文件失败: %+v",err)
+			return err
+		}
+	}
+	log.Infow("创建car文件成功")
+	return nil
+}
+
+func (p *pieceProvider) createCar(cid string) error {
+	ssh := SshManager{
+		Host:     "10.7.3.14",
+		Username: "worker",
+		Password: "WOPloong",
+	}
+
+	err := ssh.Open()
+	if err != nil {
+		return err
+	}
+	defer ssh.Close()
+	cmd := fmt.Sprintf("cd ~/retrieve && ./car --cid %s", cid)
+	s, err := ssh.Execute(cmd)
+	if err != nil {
+		fmt.Println(s)
+		return err
+	}
+	return nil
+}
+
+func (ssh *SshManager) Execute(cmd string) (string, error) {
+	session, err := ssh.client.NewSession()
+	if err != nil {
+		return "", err
+	}
+	defer session.Close()
+	buffer, err := session.CombinedOutput(cmd)
+	if err != nil {
+		return "", err
+	}
+	return string(buffer), err
+}
+
+func (ssh *SshManager) Open() error {
+	if ssh.Port == 0 {
+		ssh.Port = 22
+	}
+	config := gossh.ClientConfig{
+		User: ssh.Username,
+		Auth: []gossh.AuthMethod{gossh.Password(ssh.Password)},
+		HostKeyCallback: func(hostname string, remote net.Addr, key gossh.PublicKey) error {
+			return nil
+		},
+		Timeout: 10 * time.Second,
+	}
+	addr := fmt.Sprintf("%s:%d", ssh.Host, ssh.Port)
+	client, err := gossh.Dial("tcp", addr, &config)
+	if err != nil {
+		return err
+	}
+	ssh.client = client
+	return nil
+}
+
+func (ssh *SshManager) Close() {
+	ssh.client.Close()
+}
+
 // tryReadUnsealedPiece will try to read the unsealed piece from an existing unsealed sector file for the given sector from any worker that has it.
 // It will NOT try to schedule an Unseal of a sealed sector file for the read.
 //
@@ -98,7 +268,9 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 	pr, err := (&pieceReader{
 		ctx: ctx,
 		getReader: func(ctx context.Context, startOffset uint64) (io.ReadCloser, error) {
+			log.Errorf("zlin startOffset %+v", startOffset)
 			startOffsetAligned := storiface.UnpaddedByteIndex(startOffset / 127 * 127) // floor to multiple of 127
+			log.Errorf("zlin startOffsetAligned %+v", startOffsetAligned)
 
 			r, err := rg(startOffsetAligned.Padded())
 			if err != nil {
@@ -163,7 +335,8 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storiface.SectorRe
 		return nil, false, xerrors.Errorf("size is not a valid piece size: %w", err)
 	}
 
-	r, err := p.tryReadUnsealedPiece(ctx, unsealed, sector, pieceOffset, size)
+	//r, err := p.tryReadUnsealedPiece(ctx, unsealed, sector, pieceOffset, size)
+	r, err := p.tryReadUnsealedPieceOfSxx(ctx, unsealed, sector, pieceOffset, size)
 
 	if xerrors.Is(err, storiface.ErrSectorNotFound) {
 		log.Debugf("no unsealed sector file with unsealed piece, sector=%+v, pieceOffset=%d, size=%d", sector, pieceOffset, size)

@@ -48,6 +48,10 @@ func (pve *providerValidationEnvironment) GetAsk(ctx context.Context, payloadCid
 	return pve.p.GetDynamicAsk(ctx, input, storageDeals)
 }
 
+func (pve *providerValidationEnvironment) GetAskOfSxx(ctx context.Context) (retrievalmarket.Ask) {
+	return *pve.p.GetAsk()
+}
+
 func (pve *providerValidationEnvironment) GetPiece(c cid.Cid, pieceCID *cid.Cid) (piecestore.PieceInfo, bool, error) {
 	inPieceCid := cid.Undef
 	if pieceCID != nil {

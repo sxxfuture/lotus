@@ -155,6 +155,8 @@ require (
 	gotest.tools v2.2.0+incompatible
 )
 
+require github.com/go-sql-driver/mysql v1.7.0 // indirect
+
 require (
 	github.com/GeertJohan/go.incremental v1.0.0 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
@@ -277,6 +279,7 @@ require (
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
+	github.com/moran666666/sector-counter v0.0.0-20200819122504-72fe8e09bf44
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base36 v0.1.0 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
@@ -332,7 +335,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
-	github.com/moran666666/sector-counter v0.0.0-20200819122504-72fe8e09bf44
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi

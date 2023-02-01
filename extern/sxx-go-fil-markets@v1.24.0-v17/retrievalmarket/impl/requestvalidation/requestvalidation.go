@@ -19,6 +19,10 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
+
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
+	"fmt"
 )
 
 var allSelectorBytes []byte
@@ -34,6 +38,7 @@ func init() {
 // ValidationEnvironment contains the dependencies needed to validate deals
 type ValidationEnvironment interface {
 	GetAsk(ctx context.Context, payloadCid cid.Cid, pieceCid *cid.Cid, piece piecestore.PieceInfo, isUnsealed bool, client peer.ID) (retrievalmarket.Ask, error)
+	GetAskOfSxx(ctx context.Context) (retrievalmarket.Ask)
 
 	GetPiece(c cid.Cid, pieceCID *cid.Cid) (piecestore.PieceInfo, bool, error)
 	// CheckDealParams verifies the given deal params are acceptable
@@ -129,7 +134,8 @@ func (rv *ProviderRequestValidator) validatePull(isRestart bool, receiver peer.I
 	}
 
 	// Decide whether to accept the deal
-	status, err := rv.acceptDeal(&pds)
+	// status, err := rv.acceptDeal(&pds)
+	status, err := rv.acceptDealOfSxx(&pds)
 
 	response := retrievalmarket.DealResponse{
 		ID:     proposal.ID,
@@ -153,6 +159,63 @@ func (rv *ProviderRequestValidator) validatePull(isRestart bool, receiver peer.I
 	// Pause the data transfer while unsealing the data.
 	// The state machine will unpause the transfer when unsealing completes.
 	return &response, datatransfer.ErrPause
+}
+
+func (rv *ProviderRequestValidator) acceptDealOfSxx(deal *retrievalmarket.ProviderDealState) (retrievalmarket.DealStatus, error) {
+	dead := piecestore.DealInfo{
+		// DealID: 1,   // 不需要这些参数
+		// SectorID: 1,
+		// Offset: 0,
+		// Length: 2048,
+	}
+	deads := make([]piecestore.DealInfo, 0)
+	deads = append(deads, dead)
+	log.Errorf("zlin deal.PayloadCID :%+v", deal.PayloadCID)
+
+	db, _ := sql.Open("mysql", "root:sxxfilweb@(10.100.248.32:3306)/deal")
+	defer db.Close()
+	dberr := db.Ping()
+	if dberr != nil {
+		log.Errorf("数据库连接失败 %+v", dberr)                  //连接失败
+	} else {
+		log.Errorf("数据库连接成功")                             //连接成功
+	}
+	sql := fmt.Sprintf("SELECT piece_cid FROM db_car WHERE data_cid = '%+v'", deal.PayloadCID)
+	row := db.QueryRow(sql)
+	var piece_cid string
+	row.Scan(&piece_cid)
+	if piece_cid == "" {
+		return retrievalmarket.DealStatusRejected, nil
+		//log.Errorf("mysql %+v", piece_cid)
+	}
+
+	// 2k测试专用
+	// piece_cid = "baga6ea4seaqkz2cmtydyub634ckkmqyps4rla4dvjrrmxiwjee25izunsloo2ea"
+
+	c, err := cid.Decode(piece_cid)
+	if err != nil {
+		return retrievalmarket.DealStatusRejected, err
+	}
+
+	pieceInfo := piecestore.PieceInfo{
+		PieceCID: c,
+		Deals: deads,
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), askTimeout)
+	defer cancel()
+
+	ask := rv.env.GetAskOfSxx(ctx)
+	// check that the deal parameters match our required parameters or
+	// reject outright
+	err = rv.env.CheckDealParams(ask, deal.PricePerByte, deal.PaymentInterval, deal.PaymentIntervalIncrease, deal.UnsealPrice)
+	if err != nil {
+		return retrievalmarket.DealStatusRejected, err
+	}
+
+	deal.PieceInfo = &pieceInfo
+
+	return retrievalmarket.DealStatusAccepted, nil
 }
 
 func (rv *ProviderRequestValidator) acceptDeal(deal *retrievalmarket.ProviderDealState) (retrievalmarket.DealStatus, error) {

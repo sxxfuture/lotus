@@ -30,6 +30,9 @@ import (
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/stores"
+
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // RetrievalProviderOption is a function that configures a retrieval provider
@@ -334,54 +337,83 @@ func (p *Provider) HandleQueryStream(stream rmnet.RetrievalQueryStream) {
 	// fetch the piece from which the payload will be retrieved.
 	// if user has specified the Piece in the request, we use that.
 	// Otherwise, we prefer a Piece which can retrieved from an unsealed sector.
-	pieceCID := cid.Undef
-	if query.PieceCID != nil {
-		pieceCID = *query.PieceCID
-	}
-	pieceInfo, isUnsealed, err := p.getPieceInfoFromCid(ctx, query.PayloadCID, pieceCID)
-	if err != nil {
-		log.Errorf("Retrieval query: getPieceInfoFromCid: %s", err)
-		if !xerrors.Is(err, retrievalmarket.ErrNotFound) {
-			answer.Status = retrievalmarket.QueryResponseError
-			answer.Message = fmt.Sprintf("failed to fetch piece to retrieve from: %s", err)
-		} else {
-			answer.Message = "piece info for cid not found (deal has not been added to a piece yet)"
-		}
+	// pieceCID := cid.Undef
+	// if query.PieceCID != nil {
+	// 	pieceCID = *query.PieceCID
+	// }q
+	// pieceInfo, isUnsealed, err := p.getPieceInfoFromCid(ctx, query.PayloadCID, pieceCID)
+	// if err != nil {
+	// 	log.Errorf("Retrieval query: getPieceInfoFromCid: %s", err)
+	// 	if !xerrors.Is(err, retrievalmarket.ErrNotFound) {
+	// 		answer.Status = retrievalmarket.QueryResponseError
+	// 		answer.Message = fmt.Sprintf("failed to fetch piece to retrieve from: %s", err)
+	// 	} else {
+	// 		answer.Message = "piece info for cid not found (deal has not been added to a piece yet)"
+	// 	}
 
+	// 	sendResp(answer)
+	// 	return
+	// }
+
+	db, _ := sql.Open("mysql", "root:sxxfilweb@(10.100.248.32:3306)/deal")
+	defer db.Close()
+	dberr := db.Ping()
+	if dberr != nil {
+		log.Errorf("数据库连接失败 %+v", dberr)                  //连接失败
+	} else {
+		log.Errorf("数据库连接成功")                             //连接成功
+	}
+	log.Errorf("zlin: Retrieval query: PayloadCID: %+v", query.PayloadCID)
+	log.Errorf("zlin: Retrieval query: mineraddress: %+v", p.minerAddress)
+	sql := fmt.Sprintf("SELECT piece_cid FROM db_deal WHERE payload_cid = '%+v' AND deal_provider = '%+v'", query.PayloadCID, p.minerAddress)
+	row := db.QueryRow(sql)
+	var piece_cid string
+	row.Scan(&piece_cid)
+	if piece_cid == "" {
+		// 正式环境这里做return告诉没有piece
+		answer.Status = retrievalmarket.QueryResponseError
+		answer.Message = fmt.Sprintf("failed to fetch piece to retrieve")
 		sendResp(answer)
 		return
+		// log.Errorf("mysql %+v , %+v", payload_cid)
 	}
+
+	// 正式环境更改为: 34359738368
+	var piece_length abi.PaddedPieceSize = 34359738368
 
 	answer.Status = retrievalmarket.QueryResponseAvailable
-	answer.Size = uint64(pieceInfo.Deals[0].Length.Unpadded()) // TODO: verify on intermediate
+	// answer.Size = uint64(pieceInfo.Deals[0].Length.Unpadded()) // TODO: verify on intermediate
+	answer.Size = uint64(piece_length.Unpadded())
 	answer.PieceCIDFound = retrievalmarket.QueryItemAvailable
 
-	storageDeals, err := p.storageDealsForPiece(query.PieceCID != nil, query.PayloadCID, pieceInfo)
-	if err != nil {
-		log.Errorf("Retrieval query: storageDealsForPiece: %s", err)
-		answer.Status = retrievalmarket.QueryResponseError
-		answer.Message = fmt.Sprintf("failed to fetch storage deals containing payload: %s", err)
-		sendResp(answer)
-		return
-	}
+	// storageDeals, err := p.storageDealsForPiece(query.PieceCID != nil, query.PayloadCID, pieceInfo)
+	// if err != nil {
+	// 	log.Errorf("Retrieval query: storageDealsForPiece: %s", err)
+	// 	answer.Status = retrievalmarket.QueryResponseError
+	// 	answer.Message = fmt.Sprintf("failed to fetch storage deals containing payload: %s", err)
+	// 	sendResp(answer)
+	// 	return
+	// }
 
-	input := retrievalmarket.PricingInput{
-		// piece from which the payload will be retrieved
-		// If user hasn't given a PieceCID, we try to choose an unsealed piece in the call to `getPieceInfoFromCid` above.
-		PieceCID: pieceInfo.PieceCID,
+	// input := retrievalmarket.PricingInput{
+	// 	// piece from which the payload will be retrieved
+	// 	// If user hasn't given a PieceCID, we try to choose an unsealed piece in the call to `getPieceInfoFromCid` above.
+	// 	PieceCID: pieceInfo.PieceCID,
 
-		PayloadCID: query.PayloadCID,
-		Unsealed:   isUnsealed,
-		Client:     stream.RemotePeer(),
-	}
-	ask, err := p.GetDynamicAsk(ctx, input, storageDeals)
-	if err != nil {
-		log.Errorf("Retrieval query: GetAsk: %s", err)
-		answer.Status = retrievalmarket.QueryResponseError
-		answer.Message = fmt.Sprintf("failed to price deal: %s", err)
-		sendResp(answer)
-		return
-	}
+	// 	PayloadCID: query.PayloadCID,
+	// 	Unsealed:   isUnsealed,
+	// 	Client:     stream.RemotePeer(),
+	// }
+	// ask, err := p.GetDynamicAsk(ctx, input, storageDeals)
+	// if err != nil {
+	// 	log.Errorf("Retrieval query: GetAsk: %s", err)
+	// 	answer.Status = retrievalmarket.QueryResponseError
+	// 	answer.Message = fmt.Sprintf("failed to price deal: %s", err)
+	// 	sendResp(answer)
+	// 	return
+	// }
+	ask := p.GetAsk()
+	log.Errorf("zlin HandleQueryStream ask %+v", ask)
 
 	answer.MinPricePerByte = ask.PricePerByte
 	answer.MaxPaymentInterval = ask.PaymentInterval
