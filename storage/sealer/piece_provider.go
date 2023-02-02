@@ -9,6 +9,11 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"path/filepath"
+	"io/ioutil"
+	"encoding/json"
+	"strings"
+	"os/exec"
 
 	gossh "golang.org/x/crypto/ssh"
 	"database/sql"
@@ -42,6 +47,13 @@ type SshManager struct {
 	/**  */
 	client *gossh.Client
 }
+
+// add by lin
+type CarDir struct {
+	Miner string
+	Dir []string
+}
+// end
 
 type PieceProvider interface {
 	// ReadPiece is used to read an Unsealed piece at the given offset and of the given size from a Sector
@@ -94,6 +106,19 @@ func (p *pieceProvider) tryReadUnsealedPieceOfSxx(ctx context.Context, pc cid.Ci
 	log.Errorf("zlin: tryReadUnsealedPiece")
 	ctx, cancel := context.WithCancel(ctx)
 
+	// 优先从现有car目录查找文件，找不到再查看是否构造
+	worker_car_json_file := filepath.Join(os.Getenv("LOTUS_MINER_PATH"), "./retrieve_path.json")
+	_, err := os.Stat(worker_car_json_file)
+	if err != nil {
+		return nil, xerrors.Errorf("don't have json file of car path")
+	}
+	byteValue, err := ioutil.ReadFile(worker_car_json_file)
+	if err != nil {
+		return nil, xerrors.Errorf("can't read %+v, err: %+v", worker_car_json_file, err)
+	}
+	var car_dir CarDir
+	json.Unmarshal(byteValue, &car_dir)
+
 	db, _ := sql.Open("mysql", "root:sxxfilweb@(10.100.248.32:3306)/deal")
 	defer db.Close()
 	dberr := db.Ping()
@@ -102,43 +127,71 @@ func (p *pieceProvider) tryReadUnsealedPieceOfSxx(ctx context.Context, pc cid.Ci
 	} else {
 		log.Errorf("数据库连接成功")                             //连接成功
 	}
-	sql := fmt.Sprintf("SELECT data_cid FROM db_car WHERE piece_cid = '%+v' LIMIT 1", pc)
+	sql := fmt.Sprintf("SELECT db_car.car_path, db_car.data_cid FROM db_car, db_deal WHERE db_car.piece_cid = db_deal.piece_cid AND db_deal.deal_provider = '%+v' AND db_deal.piece_cid = '%+v' LIMIT 1", car_dir.Miner, pc)
 	row := db.QueryRow(sql)
-	var data_cid string
-	row.Scan(&data_cid)
-	if data_cid == "" {
-		return nil, xerrors.Errorf("can't read car file")
-		//log.Errorf("mysql %+v", data_cid)
+	var car_path, data_cid string
+	row.Scan(&car_path, &data_cid)
+	worker_car_path := ""
+	if car_path != "" {
+		_, car_name := filepath.Split(car_path)
+		for _, curdir := range car_dir.Dir {
+			gen_path := filepath.Join(curdir, car_name)
+			_, err = os.Stat(gen_path)
+			if err == nil {
+				worker_car_path = gen_path
+				shell := fmt.Sprintf("sudo chmod 666 %+v", worker_car_path)
+				cmd := exec.Command("sh", "-c", shell)
+				cmd.Run()
+				break
+			}
+		}
 	}
 
-	// var cardir = "/realdata01/quickbuild/output"
-	var cardir = os.Getenv("SXX_QUICKBUILD_DIR")
+	// 找不到现有car文件，尝试构造
+	if worker_car_path == "" {
+		if data_cid == "" {
+			// return nil, xerrors.Errorf("can't read car file: %w", err)
+			log.Errorf("mysql %+v", data_cid)
+		}
 
-	carpath := cardir + "/" + data_cid + ".car"
+		var quickcardir = os.Getenv("SXX_QUICKBUILD_DIR")
+
+		dirs, _ := ioutil.ReadDir(quickcardir)
+		quickbuild := false
+		for _, f := range dirs {
+			if strings.Contains(car_path, f.Name()) {
+				worker_car_path = quickcardir + "/" + data_cid + ".car"
+				quickbuild = true
+				break
+			}
+		}
+
+		// 找不到则使用原方法
+		if !quickbuild {
+			r, err := p.tryReadUnsealedPiece(ctx, pc, sector, pieceOffset, size)
+			return r, err
+		}
+
+		err = p.GenerateCarFile(worker_car_path, data_cid)
+		if err !=nil {
+			return nil, xerrors.Errorf("can't read car file: %w", err)
+		}
+	}
 
 	// 2k测试专用
-        // data_cid = "bafybeidd5nbn644m3sjwnu7kbrtvk57ez3co7w7onsm4nc25cfcck24q7u"
-        // data_cid = "bafybeidd5nbn644m3sjwnu7kbrtvk57ez3co7w7onsm4nc25cfcck24q7u"
-        // 2k测试专用
-        // carpath = "/realdata04/realdata_backup/Mianmian/11-29-car-now/baga6ea4seaqcyft4ujl3q3xcxqjlr5n3byrh6s3leyxqo7nymi3rca4joqck2eq.car"
-
-	err := p.GenerateCarFile(carpath, data_cid)
-	if err !=nil {
-		return nil, xerrors.Errorf("can't read car file: %w", err)
-	}
+	// data_cid = "bafybeidd5nbn644m3sjwnu7kbrtvk57ez3co7w7onsm4nc25cfcck24q7u"
+	// worker_car_path = "/home/user/data/car/test.car"
 
 	pr, err := (&pieceReader{
 		ctx: ctx,
 		getReader: func(ctx context.Context, startOffset uint64) (io.ReadCloser, error) {
 
-			log.Errorf("zlin : 读取%+v.car文件", pc)
+			log.Errorf("zlin : 读取%+v文件", worker_car_path)
 
-			content, err := os.Open(carpath)
+			content, err := os.Open(worker_car_path)
 			if err != nil {
 				return nil, xerrors.Errorf("test read car file: %w", err)
 			}
-
-			log.Errorf("zlin getReader %+v", startOffset)
 
 			content.Seek(int64(startOffset), io.SeekStart)
 
