@@ -42,6 +42,37 @@ func (sa *sectorAccessor) UnsealSector(ctx context.Context, sectorID abi.SectorN
 	return sa.UnsealSectorAt(ctx, sectorID, pieceOffset, length)
 }
 
+func (sa *sectorAccessor) UnsealSectorAtOfSxx(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize, pieceCid cid.Cid) (mount.Reader, error) {
+	log.Debugf("get sector %d, pieceOffset %d, length %d", sectorID, pieceOffset, length)
+	si, err := sa.sectorsStatus(ctx, sectorID, false)
+	if err != nil {
+		return nil, err
+	}
+
+	mid, err := address.IDFromAddress(sa.maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	ref := storiface.SectorRef{
+		ID: abi.SectorID{
+			Miner:  abi.ActorID(mid),
+			Number: sectorID,
+		},
+		ProofType: si.SealProof,
+	}
+
+	// Get a reader for the piece, unsealing the piece if necessary
+	log.Debugf("read piece in sector %d, pieceOffset %d, length %d from miner %d", sectorID, pieceOffset, length, mid)
+	r, unsealed, err := sa.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(pieceOffset), length, si.Ticket.Value, pieceCid)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to unseal piece from sector %d: %w", sectorID, err)
+	}
+	_ = unsealed // todo: use
+
+	return r, nil
+}
+
 func (sa *sectorAccessor) UnsealSectorAt(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (mount.Reader, error) {
 	log.Debugf("get sector %d, pieceOffset %d, length %d", sectorID, pieceOffset, length)
 	si, err := sa.sectorsStatus(ctx, sectorID, false)

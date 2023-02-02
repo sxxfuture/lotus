@@ -27,6 +27,7 @@ type MinerAPI interface {
 type SectorAccessor interface {
 	retrievalmarket.SectorAccessor
 
+	UnsealSectorAtOfSxx(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize, pieceCid cid.Cid) (mount.Reader, error)
 	UnsealSectorAt(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (mount.Reader, error)
 }
 
@@ -144,7 +145,8 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mo
 			// 	return nil
 			// }
 			// Because we know we have an unsealed copy, this UnsealSector call will actually not perform any unsealing.
-			reader, err = m.sa.UnsealSectorAt(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+			// reader, err = m.sa.UnsealSectorAt(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+			reader, err = m.sa.UnsealSectorAtOfSxx(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded(), pieceCid)
 			return err
 		})
 

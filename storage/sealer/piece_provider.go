@@ -150,8 +150,7 @@ func (p *pieceProvider) tryReadUnsealedPieceOfSxx(ctx context.Context, pc cid.Ci
 	// 找不到现有car文件，尝试构造
 	if worker_car_path == "" {
 		if data_cid == "" {
-			// return nil, xerrors.Errorf("can't read car file: %w", err)
-			log.Errorf("mysql %+v", data_cid)
+			return nil, xerrors.Errorf("can't read car file: %w", err)
 		}
 
 		var quickcardir = os.Getenv("SXX_QUICKBUILD_DIR")
