@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
+	// "strings"
 
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
@@ -14,27 +14,28 @@ import (
 )
 
 func backup(ctx context.Context, mds dtypes.MetadataDS, fpath string) error {
-	bb, ok := os.LookupEnv("LOTUS_BACKUP_BASE_PATH")
-	if !ok {
-		return xerrors.Errorf("LOTUS_BACKUP_BASE_PATH env var not set")
-	}
+	// bb, ok := os.LookupEnv("LOTUS_BACKUP_BASE_PATH")
+	// if !ok {
+	// 	bb, _ = homedir.Dir()
+	// 	return xerrors.Errorf("LOTUS_BACKUP_BASE_PATH env var not set")
+	// }
 
 	bds, ok := mds.(*backupds.Datastore)
 	if !ok {
 		return xerrors.Errorf("expected a backup datastore")
 	}
 
-	bb, err := homedir.Expand(bb)
-	if err != nil {
-		return xerrors.Errorf("expanding base path: %w", err)
-	}
+	// bb, err := homedir.Expand(bb)
+	// if err != nil {
+	// 	return xerrors.Errorf("expanding base path: %w", err)
+	// }
 
-	bb, err = filepath.Abs(bb)
-	if err != nil {
-		return xerrors.Errorf("getting absolute base path: %w", err)
-	}
+	// bb, err = filepath.Abs(bb)
+	// if err != nil {
+	// 	return xerrors.Errorf("getting absolute base path: %w", err)
+	// }
 
-	fpath, err = homedir.Expand(fpath)
+	fpath, err := homedir.Expand(fpath)
 	if err != nil {
 		return xerrors.Errorf("expanding file path: %w", err)
 	}
@@ -44,9 +45,9 @@ func backup(ctx context.Context, mds dtypes.MetadataDS, fpath string) error {
 		return xerrors.Errorf("getting absolute file path: %w", err)
 	}
 
-	if !strings.HasPrefix(fpath, bb) {
-		return xerrors.Errorf("backup file name (%s) must be inside base path (%s)", fpath, bb)
-	}
+	// if !strings.HasPrefix(fpath, bb) {
+	// 	return xerrors.Errorf("backup file name (%s) must be inside base path (%s)", fpath, bb)
+	// }
 
 	out, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {

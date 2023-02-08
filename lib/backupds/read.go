@@ -10,6 +10,9 @@ import (
 	"github.com/ipfs/go-datastore"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
+
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
+	"strings"
 )
 
 func ReadBackup(r io.Reader, cb func(key datastore.Key, value []byte, log bool) error) (bool, error) {
@@ -124,6 +127,13 @@ func RestoreInto(r io.Reader, dest datastore.Batching) error {
 	}
 
 	_, err = ReadBackup(r, func(key datastore.Key, value []byte, _ bool) error {
+		if strings.HasPrefix(key.String(), "/sectors") {
+			var out pipeline.SectorInfo
+			out.UnmarshalCBOR(bytes.NewReader(value))
+			if out.State != "Proving" {
+				return nil
+			}
+		}
 		if err := batch.Put(context.TODO(), key, value); err != nil {
 			return xerrors.Errorf("put key: %w", err)
 		}
@@ -140,3 +150,4 @@ func RestoreInto(r io.Reader, dest datastore.Batching) error {
 
 	return nil
 }
+
