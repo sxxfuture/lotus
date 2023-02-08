@@ -127,6 +127,9 @@ func RestoreInto(r io.Reader, dest datastore.Batching) error {
 	}
 
 	_, err = ReadBackup(r, func(key datastore.Key, value []byte, _ bool) error {
+		if strings.HasPrefix(key.String(), "/deals") {
+                	return nil
+                }
 		if strings.HasPrefix(key.String(), "/sectors") {
 			var out pipeline.SectorInfo
 			out.UnmarshalCBOR(bytes.NewReader(value))
