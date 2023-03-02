@@ -43,8 +43,8 @@
   dependencies: ["v18: build lotus (2k)"]
   variables:
     # DOCKER_BUILDKIT: 1
-    docker_file: .gitlab-ci/Dockerfile.debian
-    docker_tag: "@repo/v18:debian-2k-@datetime"
+    docker_file: .gitlab-ci/Dockerfile
+    docker_tag: "@repo/v18:2k-aio-@datetime"
   script:
     - pwd && ls
     - yumemi gitlab-ci docker build
