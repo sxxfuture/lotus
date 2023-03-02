@@ -46,6 +46,7 @@
     docker_file: .gitlab-ci/Dockerfile.debian
     docker_tag: "@repo/v18:debian-2k-@datetime"
   script:
+    - pwd && ls
     - yumemi gitlab-ci docker build
   only:
     refs:
