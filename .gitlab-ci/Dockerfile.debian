@@ -15,4 +15,4 @@ RUN useradd -r -u 532 -U fc \
  && mkdir -p /etc/OpenCL/vendors \
  && echo "libnvidia-opencl.so.1" > /etc/OpenCL/vendors/nvidia.icd
 
-COPY lotus lotus-miner lotus-seed lotus-shed lotus-worker /usr/local/bin/
+COPY ./lotus ./lotus-miner ./lotus-seed ./lotus-shed ./lotus-worker /usr/local/bin/
