@@ -30,7 +30,7 @@ import (
 	"os"
 	"strings"
 	"path/filepath"
-	"io/ioutil"
+	// "io/ioutil"
 	scClient "github.com/moran666666/sector-counter/client"
 )
 
@@ -218,27 +218,12 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 		}
 
 		minerpath := os.Getenv("LOTUS_MINER_PATH")
-		workerpath := filepath.Join(minerpath, "worker", deal.deal.DealProposal.PieceCID.String())
-		_, workererr := os.Stat(workerpath)
-		if workererr == nil {
-			sectorspath := filepath.Join(minerpath, "sectors")
-			_, sectorerr := os.Stat(sectorspath)
-			if sectorerr != nil {
-				os.Mkdir(sectorspath, 0755)
-			}
-			minerSector := m.minerSectorID(sector.SectorNumber)
-			sectorspath = filepath.Join(sectorspath, storiface.SectorName(minerSector))
-			_, sectorerr = os.Stat(sectorspath)
-			if sectorerr != nil {
-				buffer, fileerr := ioutil.ReadFile(workerpath)
-				if fileerr == nil {
-					os.WriteFile(sectorspath, buffer, 0666)
-				}
-			}
-			err := os.Remove(workerpath)
-			if err != nil {
-				log.Errorw("can't delete worker path :%+v", err)
-			}
+		workerpath := filepath.Join(minerpath, "sectorsworker")
+		if err := os.MkdirAll(workerpath, 0755); err != nil && !os.IsExist(err) {
+			log.Errorf("can't mkdir dir %+v, because : %+v", workerpath, err)
+		}
+		if err := os.WriteFile(filepath.Join(workerpath, sector.SectorNumber.String()), []byte(deal.deal.Worker), 0666); err != nil {
+			log.Errorf("can't write file %+v, because : %+v", workerpath, err)
 		}
 
 		if len(sector.dealIDs())+(i+1) > maxDeals {

@@ -66,6 +66,8 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	FinalizeReplicaUpdateFailed: {},
 	AbortUpgrade:                {},
 	ReceiveSector:               {},
+	WaitPC:                      {},
+	WaitC:                       {},
 }
 
 // cmd/lotus-miner/info.go defines CLI colors corresponding to these states
@@ -155,6 +157,9 @@ const (
 	Removing     SectorState = "Removing"
 	RemoveFailed SectorState = "RemoveFailed"
 	Removed      SectorState = "Removed"
+
+	WaitPC       SectorState = "WaitPC"
+	WaitC        SectorState = "WaitC"
 )
 
 func toStatState(st SectorState, finEarly bool) statSectorState {

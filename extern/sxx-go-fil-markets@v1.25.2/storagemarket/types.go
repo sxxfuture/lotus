@@ -117,6 +117,7 @@ type MinerDeal struct {
 	InboundCAR string
 	// add by lin
 	RemoteFilepath string
+	Worker string
 	// end
 }
 

@@ -1778,6 +1778,9 @@ var sectorsUpdateCmd = &cli.Command{
 			return nil
 		}
 
+		if os.Getenv("LOTUS_OF_SXX") == "1" {
+			return minerAPI.SectorsUpdateOfSxx(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)), cctx.Args().Get(2))
+		}
 		return minerAPI.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
 	},
 }

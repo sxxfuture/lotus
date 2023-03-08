@@ -111,6 +111,12 @@ const (
 	StorageDealTransferQueued
 
 	// add by lin
+	StorageDealReserveProviderFundsOfSxx
+
+	StorageDealPublishOfSxx
+
+	StorageDealPublishingOfSxx
+
 	StorageDealStagedOfSxx
 	// end
 )
@@ -125,6 +131,9 @@ var DealStates = map[StorageDealStatus]string{
 	StorageDealStartDataTransfer:            "StorageDealStartDataTransfer",
 	StorageDealStaged:                       "StorageDealStaged",
 	// add by lin
+	StorageDealReserveProviderFundsOfSxx:    "StorageDealReserveProviderFundsOfSxx",
+	StorageDealPublishOfSxx:                 "StorageDealPublishOfSxx",
+	StorageDealPublishingOfSxx:              "StorageDealPublishingOfSxx",
 	StorageDealStagedOfSxx:                  "StorageDealStagedOfSxx",
 	// end
 	StorageDealAwaitingPreCommit:            "StorageDealAwaitingPreCommit",
@@ -163,6 +172,9 @@ var DealStatesDescriptions = map[StorageDealStatus]string{
 	StorageDealStartDataTransfer:            "Starting data transfer",
 	StorageDealStaged:                       "Staged",
 	// add by lin
+	StorageDealReserveProviderFundsOfSxx:    "Reserving provider funds",
+	StorageDealPublishOfSxx:                 "Publish",
+	StorageDealPublishingOfSxx:              "Publishing",
 	StorageDealStagedOfSxx:                  "Staged",
 	// end
 	StorageDealAwaitingPreCommit:            "Awaiting a PreCommit message on chain",

@@ -213,6 +213,14 @@ func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) e
 	})
 }
 
+func (m *Sealing) handleWaitPC(ctx statemachine.Context, sector SectorInfo) error {
+	return nil
+}
+
+func (m *Sealing) handleWaitC(ctx statemachine.Context, sector SectorInfo) error {
+	return nil
+}
+
 func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
 	if err := checkPieces(ctx.Context(), m.maddr, sector.SectorNumber, sector.Pieces, m.Api, false); err != nil { // Sanity check state
 		switch err.(type) {
@@ -578,6 +586,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 	var c2in storiface.Commit1Out
 	if sector.RemoteCommit1Endpoint == "" {
+		log.Errorf("zlin commit 1")
 		// Local Commit1
 		cids := storiface.SectorCids{
 			Unsealed: *sector.CommD,
@@ -588,6 +597,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 			return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(1): %w", err)})
 		}
 	} else {
+		log.Errorf("zlin commit 2")
 		// Remote Commit1
 
 		reqData := api.RemoteCommit1Params{
@@ -628,6 +638,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 	var porepProof storiface.Proof
 
 	if sector.RemoteCommit2Endpoint == "" {
+		log.Errorf("zlin commit 3")
 		// Local Commit2
 
 		porepProof, err = m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
@@ -635,6 +646,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 			return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
 		}
 	} else {
+		log.Errorf("zlin commit 4")
 		// Remote Commit2
 
 		reqData := api.RemoteCommit2Params{

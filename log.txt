@@ -1,0 +1,61 @@
+nohup: ignoring input
+2023-03-08T09:41:38.774Z	INFO	main	lotus-worker/main.go:291	Starting lotus worker
+2023-03-08T09:41:38.778Z	INFO	main	lotus-worker/main.go:347	Remote version 1.20.1+2k+git.eddb732ff.dirty+api1.5.0
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-0-0-5294475db5237a2e83c3e52fd6c2b03859a1831d45ed08c4f35dbf9a803165a9.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-stacked-proof-of-replication-merkletree-poseidon_hasher-8-0-0-sha256_hasher-032d3138d22506ec0082ed72b2dcba18df18477904e35bafee82b3793b06832f.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-stacked-proof-of-replication-merkletree-poseidon_hasher-8-8-2-sha256_hasher-96f1b4a04c5c51e4759bbf224bbc2ef5a42c7100f16ec0637123f16a845ddfb2.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-empty-sector-update-merkletree-poseidon_hasher-8-8-2-102e1444a7e9a97ebf1e3d6855dcc77e66c011ea66f936d9b2c508f87f2f83a7.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-empty-sector-update-merkletree-poseidon_hasher-8-0-0-92180959e1918d26350b8e6cfe217bbdd0a2d8de51ebec269078b364b715ad63.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-0-0-0170db1f394b35d995252228ee359194b13199d259380541dc529fb0099096b0.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-8-2-b62098629d07946e9028127e70295ed996fe3ed25b0f9f88eb610a0ab4385a3c.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-0-0-0cfb4f178bbb71cf2ecfcd42accce558b27199ab4fb59cb78f2483fe21ef36d9.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-0-0-7d739b8cf60f1b0709eeebee7730e297683552e4b69cab6984ec0285663c5781.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-empty-sector-update-merkletree-poseidon_hasher-8-0-0-61fa69f38b9cc771ba27b670124714b4ea77fbeae05e377fb859c4a43b73a30c.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-8-0-559e581f022bb4e4ec6e719e563bf0e026ad6de42e56c18714a2c692b1b88d7e.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-stacked-proof-of-replication-merkletree-poseidon_hasher-8-0-0-sha256_hasher-ecd683648512ab1765faa2a5f14bab48f676e633467f0aa8aad4b55dcb0652bb.vk is ok
+2023-03-08T09:41:38.780Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-stacked-proof-of-replication-merkletree-poseidon_hasher-8-8-0-sha256_hasher-82a357d2f2ca81dc61bb45f4a762807aedee1b0a53fd6c4e77b46a01bfef7820.vk is ok
+2023-03-08T09:41:38.781Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-0-0-3ea05428c9d11689f23529cde32fd30aabd50f7d2c93657c1d3650bca3e8ea9e.vk is ok
+2023-03-08T09:41:38.781Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-empty-sector-update-merkletree-poseidon_hasher-8-0-0-fb9e095bebdd77511c0269b967b4d87ba8b8a525edaa0e165de23ba454510194.vk is ok
+2023-03-08T09:41:38.781Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-0-0-50c7368dea9593ed0989e70974d28024efa9d156d585b7eea1be22b2e753f331.vk is ok
+2023-03-08T09:41:38.781Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-empty-sector-update-merkletree-poseidon_hasher-8-8-0-3b7f44a9362e3985369454947bc94022e118211e49fd672d52bec1cbfd599d18.vk is ok
+2023-03-08T09:41:38.781Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-stacked-proof-of-replication-merkletree-poseidon_hasher-8-0-0-sha256_hasher-6babf46ce344ae495d558e7770a585b2382d54f225af8ed0397b8be7c3fcd472.vk is ok
+2023-03-08T09:41:38.784Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-8-0-0377ded656c6f524f1618760bffe4e0a1c51d5a70c4509eedae8a27555733edc.vk is ok
+2023-03-08T09:41:38.785Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-8-2-2627e4006b67f99cef990c0a47d5426cb7ab0a0ad58fc1061547bf2d28b09def.vk is ok
+2023-03-08T09:41:38.797Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-0-0-0170db1f394b35d995252228ee359194b13199d259380541dc529fb0099096b0.params is ok
+2023-03-08T09:41:38.856Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-0-0-3ea05428c9d11689f23529cde32fd30aabd50f7d2c93657c1d3650bca3e8ea9e.params is ok
+2023-03-08T09:41:39.264Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-fil-inner-product-v1.srs is ok
+2023-03-08T09:41:39.761Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-empty-sector-update-merkletree-poseidon_hasher-8-0-0-fb9e095bebdd77511c0269b967b4d87ba8b8a525edaa0e165de23ba454510194.params is ok
+2023-03-08T09:41:40.417Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:209	Parameter file /var/tmp/filecoin-proof-parameters/v28-stacked-proof-of-replication-merkletree-poseidon_hasher-8-0-0-sha256_hasher-032d3138d22506ec0082ed72b2dcba18df18477904e35bafee82b3793b06832f.params is ok
+2023-03-08T09:41:40.417Z	INFO	paramfetch	go-paramfetch@v0.0.4/paramfetch.go:233	parameter and key-fetching complete
+2023-03-08T09:41:40.442Z	INFO	badger	v2@v2.2007.3/levels.go:183	All 0 tables opened in 0s
+
+2023-03-08T09:41:40.451Z	INFO	badger	v2@v2.2007.3/value.go:1158	Replaying file id: 0 at offset: 0
+
+2023-03-08T09:41:40.451Z	INFO	badger	v2@v2.2007.3/value.go:1178	Replay took: 9.667µs
+
+2023-03-08T09:41:40.453Z	INFO	badger	v2@v2.2007.3/levels.go:183	All 0 tables opened in 0s
+
+2023-03-08T09:41:40.462Z	INFO	badger	v2@v2.2007.3/value.go:1158	Replaying file id: 0 at offset: 0
+
+2023-03-08T09:41:40.462Z	INFO	badger	v2@v2.2007.3/value.go:1178	Replay took: 3.486µs
+
+2023-03-08T09:41:40.462Z	INFO	main	lotus-worker/main.go:508	Opening local storage; connecting to master
+2023-03-08T09:41:40.463Z	INFO	main	lotus-worker/main.go:567	Setting up control endpoint at 127.0.0.1:8102
+2023-03-08T09:41:40.466Z	INFO	main	lotus-worker/main.go:662	Making sure no local tasks are running
+2023-03-08T09:41:40.496Z	INFO	main	lotus-worker/main.go:685	Worker registered successfully, waiting for tasks
+2023-03-08T10:00:40.467Z	ERROR	main	lotus-worker/main.go:669	heartbeat: checking remote session failed: RPC client error: sendRequest failed: Post "http://127.0.0.1:2345/rpc/v0": dial tcp 127.0.0.1:2345: connect: connection refused
+2023-03-08T10:00:40.665Z	WARN	stores	paths/local.go:397	error reporting storage health for 3692ca72-2f39-41c8-959a-d2758152574b ({Stat:{Capacity:1081180868608 Available:1002201350144 FSAvailable:1002201350144 Reserved:0 Max:0 Used:0} Err:}): RPC client error: sendRequest failed: Post "http://127.0.0.1:2345/rpc/v0": dial tcp 127.0.0.1:2345: connect: connection refused
+2023-03-08T10:00:50.467Z	ERROR	main	lotus-worker/main.go:694	LOTUS-MINER CONNECTION LOST
+2023-03-08T10:00:50.467Z	INFO	main	lotus-worker/main.go:646	Redeclaring local storage
+2023-03-08T10:00:50.468Z	INFO	main	lotus-worker/main.go:662	Making sure no local tasks are running
+2023-03-08T10:00:50.477Z	INFO	main	lotus-worker/main.go:685	Worker registered successfully, waiting for tasks
+ION LOST
+2023-03-08T10:00:49.911Z	INFO	main	lotus-worker/main.go:646	Redeclaring local storage
+2023-03-08T10:00:49.912Z	INFO	main	lotus-worker/main.go:662	Making sure no local tasks are running
+2023-03-08T10:00:49.920Z	INFO	main	lotus-worker/main.go:685	Worker registered successfully, waiting for tasks
+2023-03-08T10:01:36.733Z	DEBUG	advmgr	sealer/worker_local.go:165	acquired sector {{1000 8} 5} (e:1; a:0): {{0 0} /home/user/data/lotus_data/worker01/unsealed/s-t01000-8    }
+2023-03-08T10:01:36.753Z	ERROR	stores	paths/localstorage_cached.go:106	error getting disk usage	{"path": "/home/user/data/lotus_data/worker01/sealed/s-t01000-8", "error": "file does not exist"}
+2023-03-08T10:01:36.753Z	DEBUG	advmgr	sealer/worker_local.go:165	acquired sector {{1000 8} 5} (e:1; a:6): {{0 0} /home/user/data/lotus_data/worker01/unsealed/s-t01000-8 /home/user/data/lotus_data/worker01/sealed/s-t01000-8 /home/user/data/lotus_data/worker01/cache/s-t01000-8  }
+2023-03-08T10:01:36.801Z	DEBUG	advmgr	sealer/worker_local.go:165	acquired sector {{1000 8} 5} (e:6; a:0): {{0 0}  /home/user/data/lotus_data/worker01/sealed/s-t01000-8 /home/user/data/lotus_data/worker01/cache/s-t01000-8  }
+2023-03-08T10:01:36.818Z	DEBUG	advmgr	sealer/worker_local.go:165	acquired sector {{1000 8} 5} (e:6; a:0): {{0 0}  /home/user/data/lotus_data/worker01/sealed/s-t01000-8 /home/user/data/lotus_data/worker01/cache/s-t01000-8  }
+2023-03-08T10:03:09.066Z	DEBUG	advmgr	sealer/worker_local.go:165	acquired sector {{1000 8} 5} (e:6; a:0): {{0 0}  /home/user/data/lotus_data/worker01/sealed/s-t01000-8 /home/user/data/lotus_data/worker01/cache/s-t01000-8  }

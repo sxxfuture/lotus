@@ -295,6 +295,11 @@ const (
 
 	// add by lin
 	ProviderEventVerifiedDataOfSxx
+
+	ProviderEventFundedOfSxx
+
+	ProviderEventDealPublishInitiatedOfSxx
+
 	ProviderEventDealPublishedOfSxx
 	// end
 )
@@ -345,6 +350,8 @@ var ProviderEvents = map[ProviderEvent]string{
 	ProviderEventDealPrecommitted:            "ProviderEventDealPrecommitted",
 	ProviderEventAwaitTransferRestartTimeout: "ProviderEventAwaitTransferRestartTimeout",
 	// add by lin
+	ProviderEventFundedOfSxx:                 "ProviderEventFundedOfSxx",
+	ProviderEventDealPublishInitiatedOfSxx:   "ProviderEventDealPublishInitiatedOfSxx",
 	ProviderEventVerifiedDataOfSxx:           "ProviderEventVerifiedDataOfSxx",
 	ProviderEventDealPublishedOfSxx:          "ProviderEventDealPublishedOfSxx",
 	// end

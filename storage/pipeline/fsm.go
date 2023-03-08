@@ -17,6 +17,10 @@ import (
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
+
+	"os"
+	"path/filepath"
+	"io/ioutil"
 )
 
 func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, uint64, error) {
@@ -71,8 +75,11 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	Packing: planOne(on(SectorPacked{}, GetTicket)),
 	GetTicket: planOne(
-		on(SectorTicket{}, PreCommit1),
+		// on(SectorTicket{}, PreCommit1),
+		on(SectorTicket{}, WaitPC),
 		on(SectorCommitFailed{}, CommitFailed),
+	),
+	WaitPC: planOne(
 	),
 	PreCommit1: planOne(
 		on(SectorPreCommit1{}, PreCommit2),
@@ -114,8 +121,11 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryPreCommit{}, PreCommitting),
 	),
 	WaitSeed: planOne(
-		on(SectorSeedReady{}, Committing),
+		// on(SectorSeedReady{}, Committing),
+		on(SectorSeedReady{}, WaitC),
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
+	),
+	WaitC: planOne(
 	),
 	Committing: planCommitting,
 	CommitFinalize: planOne(
@@ -488,6 +498,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handlePacking, processed, nil
 	case GetTicket:
 		return m.handleGetTicket, processed, nil
+	case WaitPC:
+		return m.handleWaitPC, processed, nil
 	case PreCommit1:
 		return m.handlePreCommit1, processed, nil
 	case PreCommit2:
@@ -502,6 +514,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handlePreCommitWait, processed, nil
 	case WaitSeed:
 		return m.handleWaitSeed, processed, nil
+	case WaitC:
+		return m.handleWaitC, processed, nil
 	case Committing:
 		return m.handleCommitting, processed, nil
 	case SubmitCommit:
@@ -716,6 +730,24 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 }
 
 func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, state SectorState) error {
+	m.startupWait.Wait()
+	return m.sectors.Send(id, SectorForceState{state})
+}
+
+func (m *Sealing) ForceSectorStateOfSxx(ctx context.Context, id abi.SectorNumber, state SectorState, worker string) error {
+	minerpath := os.Getenv("LOTUS_MINER_PATH")
+	sectorspath := filepath.Join(minerpath, "./sectorsworker")
+	if err := os.MkdirAll(sectorspath, 0755); err != nil {
+		if !os.IsExist(err) {
+			return err
+		}
+	}
+	if state == SectorState("Committing") {
+		if err := ioutil.WriteFile(filepath.Join(sectorspath, id.String()), []byte(worker), 0666); err != nil {
+			return err
+		}
+	}
+
 	m.startupWait.Wait()
 	return m.sectors.Send(id, SectorForceState{state})
 }
