@@ -31,9 +31,9 @@ stages:
         - extern/filecoin-ffi/
   before_script:
     # ci cache will create empty dir, which should not exist
-    - '[ -z "$(ls extern/serialization-vectors)" ] && rm -r extern/serialization-vectors'
-    - '[ -z "$(ls extern/test-vectors)" ] && rm -r extern/test-vectors'
-    - '[ -z "$(ls extern/filecoin-ffi)" ] && rm -r extern/filecoin-ffi'
+    - '[ -z "$(ls extern/serialization-vectors)" ] && rm -r extern/serialization-vectors && echo extern/serialization-vectors removed'
+    - '[ -z "$(ls extern/test-vectors)" ] && rm -r extern/test-vectors && echo extern/test-vectors removed'
+    - '[ -z "$(ls extern/filecoin-ffi)" ] && rm -r extern/filecoin-ffi && echo extern/filecoin-ffi removed'
     - mkdir -p .go
 
 include:
