@@ -15,26 +15,27 @@ stages:
     https_proxy: $DEFAULT_PROXY
     RUSTFLAGS: ""
     GOFLAGS: ""
-  cache:
-    - key:
-        files:
-          - go.mod
-          - go.sum
-        prefix: $CI_COMMIT_REF_SLUG
-      paths:
-        - .go/
-    - key: build-deps-$CI_COMMIT_REF_SLUG
-      paths:
-        - build/.update-modules
-        - build/.filecoin-install
-        - extern/serialization-vectors/
-        - extern/test-vectors/
-        - extern/filecoin-ffi/
+  # cache:
+  #   - key:
+  #       files:
+  #         - go.mod
+  #         - go.sum
+  #       prefix: $CI_COMMIT_REF_SLUG
+  #     paths:
+  #       - .go/
+  #   - key: build-deps-$CI_COMMIT_REF_SLUG
+  #     paths:
+  #       - build/.update-modules
+  #       - build/.filecoin-install
+  #       - extern/serialization-vectors/
+  #       - extern/test-vectors/
+  #       - extern/filecoin-ffi/
   before_script:
     # ci cache will create empty dir, which should not exist
-    - '[ -z "$(ls extern/serialization-vectors)" ] && rm -r extern/serialization-vectors && echo extern/serialization-vectors removed'
-    - '[ -z "$(ls extern/test-vectors)" ] && rm -r extern/test-vectors && echo extern/test-vectors removed'
-    - '[ -z "$(ls extern/filecoin-ffi)" ] && rm -r extern/filecoin-ffi && echo extern/filecoin-ffi removed'
+    # - '[ -z "$(ls extern/serialization-vectors)" ] && rm -r extern/serialization-vectors && echo extern/serialization-vectors removed'
+    # - '[ -z "$(ls extern/test-vectors)" ] && rm -r extern/test-vectors && echo extern/test-vectors removed'
+    # - '[ -z "$(ls extern/filecoin-ffi)" ] && rm -r extern/filecoin-ffi && echo extern/filecoin-ffi removed'
+    - echo $CI_COMMIT_REF_SLUG
     - mkdir -p .go
 
 include:
