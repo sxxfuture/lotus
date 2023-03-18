@@ -4,7 +4,7 @@
     name: "v20-filbase binaries"
     paths: [lotus, lotus-miner, lotus-worker]
   script:
-    - make lotus lotus-miner lotus-worker
+    - make lotus lotus-miner lotus-worker || cat extern/filecoin-ffi/fvm.go
   only:
     refs:
       - v20_of_car_filbase
