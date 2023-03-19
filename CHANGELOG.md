@@ -1,5 +1,42 @@
 # Lotus changelog
 
+# v1.20.4 / 2023-03-17
+
+This is a patch release intended to alleviate performance issues reported by some users since the nv18 upgrade. 
+The primary change is to update the FFI to allow for FVM parallelism of 4 by default, and make this user-configurable.
+through the `LOTUS_FVM_CONCURRENCY` env var. 
+
+Users with higher memory specs can experiment with setting `LOTUS_FVM_CONCURRENCY` to higher values, up to 48, to allow for more concurrent FVM execution.
+
+## Bug fixes
+
+- Splitstore: Don't enforce walking receipt tree during compaction #10505
+- fix: build: drop drand incentinet servers #10506 
+
+## Improvement
+
+- chore: update ffi to increase execution parallelism #10503 
+
+# v1.20.3 / 2023-03-09
+
+A 🐈 stepped on the ⌨️ and made a mistake while resolving conflicts 😨. This releases only includes #10439 to fix that mistake. v1.20.2 is retracted - Please skip v1.20.2 and only update to v1.20.3!!!
+
+# v1.20.2 / 2023-03-09
+
+DO NOT USE: Use 1.20.3 instead!
+
+This is a HIGHLY RECOMMENDED patch release for node operators/API service providers that run ETH RPC service and an optional release for Storage Providers.
+
+## Bug fixes
+- fix: EthAPI: use StateCompute for feeHistory; apply minimum gas premium #10413
+- fix: eth API: return correct txIdx around null blocks #10419
+- fix: Eth API: make block parameter parsing sounder. #10427
+
+## Improvement
+- feat: Lotus Gateway: Add missing methods - master #10420
+- feat: mempool: Reduce minimum replace fee from 1.25x to 1.1x #10416
+ - We recommend storage providers to update your nodes to this patch, that will help improve developers who use Ethereum tooling's experience.
+
 # v1.20.1 / 2023-03-06
 
 This an optional patch releases for node operators/API service providers that run ETH RPC service.
