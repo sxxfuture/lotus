@@ -94,15 +94,7 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 				// add by pan/lin
 				var skip = false
 
-				// if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate {
-				// 	i := sh.findWorker(task)
-				// 	if i > -1 {
-				// 		wnd = i
-				// 	windowRequest = sh.OpenWindows[i]
-				// 		skip = true
-				// 	}
-				// }
-				if !(task.TaskType == sealtasks.TTCommit1) {
+				if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate || task.TaskType == sealtasks.TTCommit2 {
 					i := sh.findWorker(task)
 					if i > -1 {
 						wnd = i
