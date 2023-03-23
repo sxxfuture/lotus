@@ -87,6 +87,10 @@ func (evt SectorAddPiece) apply(state *SectorInfo) {
 	}
 }
 
+type SectorAddPieceWait struct{}
+
+func (evt SectorAddPieceWait) apply(si *SectorInfo) {}
+
 type SectorPieceAdded struct {
 	NewPieces []api.SectorPiece
 }

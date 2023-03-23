@@ -56,6 +56,9 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	if len(m.assignedPieces[sid]) > 0 {
 		m.inputLk.Unlock()
 		// got assigned more pieces in the AddPiece state
+		if os.Getenv("LOTUS_OF_SXX") == "1" {
+			return ctx.Send(SectorAddPieceWait{})
+		}
 		return ctx.Send(SectorAddPiece{})
 	}
 
@@ -75,6 +78,9 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 				// todo check deal start deadline (configurable)
 				m.assignedPieces[sid] = append(m.assignedPieces[sid], cid)
 
+				if os.Getenv("LOTUS_OF_SXX") == "1" {
+					return ctx.Send(SectorAddPieceWait{})
+				}
 				return ctx.Send(SectorAddPiece{})
 			},
 			number:   sector.SectorNumber,

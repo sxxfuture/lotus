@@ -213,6 +213,10 @@ func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) e
 	})
 }
 
+func (m *Sealing) handleWaitAP(ctx statemachine.Context, sector SectorInfo) error {
+	return nil
+}
+
 func (m *Sealing) handleWaitPC(ctx statemachine.Context, sector SectorInfo) error {
 	return nil
 }

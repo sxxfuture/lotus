@@ -66,6 +66,7 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	FinalizeReplicaUpdateFailed: {},
 	AbortUpgrade:                {},
 	ReceiveSector:               {},
+	WaitAP:                      {},
 	WaitPC:                      {},
 	WaitC:                       {},
 }
@@ -158,6 +159,7 @@ const (
 	RemoveFailed SectorState = "RemoveFailed"
 	Removed      SectorState = "Removed"
 
+	WaitAP       SectorState = "WaitAP"
 	WaitPC       SectorState = "WaitPC"
 	WaitC        SectorState = "WaitC"
 )

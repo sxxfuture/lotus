@@ -60,12 +60,16 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorReceive{}, ReceiveSector),
 	),
 	Empty: planOne( // deprecated
+		on(SectorAddPieceWait{}, WaitAP),
 		on(SectorAddPiece{}, AddPiece),
 		on(SectorStartPacking{}, Packing),
 	),
 	WaitDeals: planOne(
+		on(SectorAddPieceWait{}, WaitAP),
 		on(SectorAddPiece{}, AddPiece),
 		on(SectorStartPacking{}, Packing),
+	),
+	WaitAP: planOne(
 	),
 	AddPiece: planOne(
 		on(SectorPieceAdded{}, WaitDeals),
@@ -492,6 +496,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		fallthrough
 	case WaitDeals:
 		return m.handleWaitDeals, processed, nil
+	case WaitAP:
+		return m.handleWaitAP, processed, nil
 	case AddPiece:
 		return m.handleAddPiece, processed, nil
 	case Packing:
