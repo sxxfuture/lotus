@@ -742,13 +742,13 @@ func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, sta
 
 func (m *Sealing) ForceSectorStateOfSxx(ctx context.Context, id abi.SectorNumber, state SectorState, worker string) error {
 	log.Infof("ForceSectorStateOfSxx : sector %+v , state %+v, worker : %+v", id, state, worker)
-	_, err = m.SectorsStatus(ctx, id, false)
+	_, err := m.SectorsStatus(ctx, id, false)
 	if err != nil {
 		return xerrors.Errorf("sector %d not found, could not change state", id)
 	}
 	minerpath := os.Getenv("LOTUS_MINER_PATH")
 	sectorspath := filepath.Join(minerpath, "./sectorsworker")
-	if err := os.MkdirAll(sectorspath, 0755); err != nil {
+	if err = os.MkdirAll(sectorspath, 0755); err != nil {
 		if !os.IsExist(err) {
 			return xerrors.Errorf("mkdir sectorsworker path err : %+v", err)
 		}

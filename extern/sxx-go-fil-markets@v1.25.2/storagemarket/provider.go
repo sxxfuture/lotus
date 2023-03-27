@@ -60,7 +60,7 @@ type StorageProvider interface {
 	ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader) error
 
 	// add by lin
-	ImportDataForDealOfSxx(ctx context.Context, propCid cid.Cid, path string, worker string) error
+	ImportDataForDealOfSxx(ctx context.Context, propCid cid.Cid, path string) error
 	// end
 
 	// SubscribeToEvents listens for events that happen related to storage deals on a provider

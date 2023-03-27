@@ -361,13 +361,6 @@ var dealsImportDataCmd = &cli.Command{
 	Name:      "import-data",
 	Usage:     "Manually import data for a deal",
 	ArgsUsage: "<proposal CID> <file>",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "worker",
-			Usage:    "Set specified worker",
-			Value:    "",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
@@ -389,8 +382,7 @@ var dealsImportDataCmd = &cli.Command{
 		fpath := cctx.Args().Get(1)
 
 		if os.Getenv("LOTUS_OF_SXX") == "1" {
-			worker := cctx.String("worker")
-			return api.DealsImportDataOfSxx(ctx, propCid, fpath, worker)
+			return api.DealsImportDataOfSxx(ctx, propCid, fpath)
 		}
 
 		return api.DealsImportData(ctx, propCid, fpath)

@@ -101,40 +101,8 @@ var ProviderEvents = fsm.Events{
 			deal.MetadataPath = metadataPath
 			return nil
 		}),
-	// add by lin
-	fsm.Event(storagemarket.ProviderEventVerifiedDataOfSxx).
-		From(storagemarket.StorageDealWaitingForData).To(storagemarket.StorageDealReserveProviderFundsOfSxx).
-		Action(func(deal *storagemarket.MinerDeal, path filestore.Path, metadataPath filestore.Path, worker string) error {
-			deal.PiecePath = path
-			deal.MetadataPath = metadataPath
-			deal.Worker = worker
-			return nil
-		}),
-	fsm.Event(storagemarket.ProviderEventFundedOfSxx).
-		From(storagemarket.StorageDealReserveProviderFundsOfSxx).To(storagemarket.StorageDealPublishOfSxx).
-		Action(func(deal *storagemarket.MinerDeal, worker string) error {
-			deal.Worker = worker
-			return nil
-		}),
-	fsm.Event(storagemarket.ProviderEventDealPublishInitiatedOfSxx).
-		From(storagemarket.StorageDealPublishOfSxx).To(storagemarket.StorageDealPublishingOfSxx).
-		Action(func(deal *storagemarket.MinerDeal, finalCid cid.Cid, worker string) error {
-			deal.PublishCid = &finalCid
-			deal.Worker = worker
-			return nil
-		}),
-	fsm.Event(storagemarket.ProviderEventDealPublishedOfSxx).
-		From(storagemarket.StorageDealPublishingOfSxx).To(storagemarket.StorageDealStagedOfSxx).
-		Action(func(deal *storagemarket.MinerDeal, dealID abi.DealID, finalCid cid.Cid, worker string) error {
-			deal.DealID = dealID
-			deal.PublishCid = &finalCid
-			deal.Worker = worker
-			return nil
-		}),
-
-	// end
 	fsm.Event(storagemarket.ProviderEventFundingInitiated).
-		FromMany(storagemarket.StorageDealReserveProviderFunds, storagemarket.StorageDealReserveProviderFundsOfSxx).To(storagemarket.StorageDealProviderFunding).
+		From(storagemarket.StorageDealReserveProviderFunds).To(storagemarket.StorageDealProviderFunding).
 		Action(func(deal *storagemarket.MinerDeal, mcid cid.Cid) error {
 			deal.AddFundsCid = &mcid
 			return nil
@@ -148,7 +116,7 @@ var ProviderEvents = fsm.Events{
 			return nil
 		}),
 	fsm.Event(storagemarket.ProviderEventDealPublishError).
-		FromMany(storagemarket.StorageDealPublishing, storagemarket.StorageDealPublishingOfSxx).To(storagemarket.StorageDealFailing).
+		From(storagemarket.StorageDealPublishing).To(storagemarket.StorageDealFailing).
 		Action(func(deal *storagemarket.MinerDeal, err error) error {
 			deal.Message = xerrors.Errorf("PublishStorageDeal error: %w", err).Error()
 			return nil
@@ -160,12 +128,21 @@ var ProviderEvents = fsm.Events{
 			return nil
 		}),
 	fsm.Event(storagemarket.ProviderEventDealPublished).
-		FromMany(storagemarket.StorageDealPublishing, storagemarket.StorageDealPublishingOfSxx).To(storagemarket.StorageDealStaged).
+		From(storagemarket.StorageDealPublishing).To(storagemarket.StorageDealStaged).
 		Action(func(deal *storagemarket.MinerDeal, dealID abi.DealID, finalCid cid.Cid) error {
 			deal.DealID = dealID
 			deal.PublishCid = &finalCid
 			return nil
 		}),
+	// add by lin
+	fsm.Event(storagemarket.ProviderEventDealPublishedOfSxx).
+		From(storagemarket.StorageDealPublishing).To(storagemarket.StorageDealStagedOfSxx).
+		Action(func(deal *storagemarket.MinerDeal, dealID abi.DealID, finalCid cid.Cid) error {
+			deal.DealID = dealID
+			deal.PublishCid = &finalCid
+			return nil
+		}),
+	// end
 	// change by lin
 	fsm.Event(storagemarket.ProviderEventFileStoreErrored).
 		FromMany(storagemarket.StorageDealStaged, storagemarket.StorageDealStagedOfSxx, storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive).To(storagemarket.StorageDealFailing).
@@ -258,13 +235,13 @@ var ProviderEvents = fsm.Events{
 			return nil
 		}),
 	fsm.Event(storagemarket.ProviderEventTrackFundsFailed).
-		FromMany(storagemarket.StorageDealReserveProviderFunds, storagemarket.StorageDealReserveProviderFundsOfSxx).To(storagemarket.StorageDealFailing).
+		From(storagemarket.StorageDealReserveProviderFunds).To(storagemarket.StorageDealFailing).
 		Action(func(deal *storagemarket.MinerDeal, err error) error {
 			deal.Message = xerrors.Errorf("error tracking deal funds: %w", err).Error()
 			return nil
 		}),
 	fsm.Event(storagemarket.ProviderEventFundsReserved).
-		FromMany(storagemarket.StorageDealReserveProviderFunds, storagemarket.StorageDealReserveProviderFundsOfSxx).ToJustRecord().
+		From(storagemarket.StorageDealReserveProviderFunds).ToJustRecord().
 		Action(func(deal *storagemarket.MinerDeal, fundsReserved abi.TokenAmount) error {
 			if deal.FundsReserved.Nil() {
 				deal.FundsReserved = fundsReserved
@@ -293,9 +270,6 @@ var ProviderStateEntryFuncs = fsm.StateEntryFuncs{
 	storagemarket.StorageDealPublishing:                   WaitForPublish,
 	storagemarket.StorageDealStaged:                       HandoffDeal,
 	// add by lin
-	storagemarket.StorageDealReserveProviderFundsOfSxx:    ReserveProviderFundsOfSxx,
-	storagemarket.StorageDealPublishOfSxx:                 PublishDealOfSxx,
-	storagemarket.StorageDealPublishingOfSxx:              WaitForPublishOfSxx,
 	storagemarket.StorageDealStagedOfSxx:                  HandoffDealOfSxx,
 	// end
 	storagemarket.StorageDealAwaitingPreCommit:            VerifyDealPreCommitted,

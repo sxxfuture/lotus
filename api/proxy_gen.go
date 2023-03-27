@@ -906,7 +906,7 @@ type StorageMinerMethods struct {
 
 	DealsImportData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"admin"`
 
-	DealsImportDataOfSxx func(p0 context.Context, p1 cid.Cid, p2 string, p3 string) error `perm:"admin"`
+	DealsImportDataOfSxx func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"admin"`
 
 	DealsList func(p0 context.Context) ([]*MarketDeal, error) `perm:"admin"`
 
@@ -5430,14 +5430,14 @@ func (s *StorageMinerStruct) DealsList(p0 context.Context) ([]*MarketDeal, error
 	return s.Internal.DealsList(p0)
 }
 
-func (s *StorageMinerStruct) DealsImportDataOfSxx(p0 context.Context, p1 cid.Cid, p2 string, p3 string) error {
+func (s *StorageMinerStruct) DealsImportDataOfSxx(p0 context.Context, p1 cid.Cid, p2 string) error {
 	if s.Internal.DealsImportDataOfSxx == nil {
 		return ErrNotSupported
 	}
-	return s.Internal.DealsImportDataOfSxx(p0, p1, p2, p3)
+	return s.Internal.DealsImportDataOfSxx(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) DealsImportDataOfSxx(p0 context.Context, p1 cid.Cid, p2 string, p3 string) error {
+func (s *StorageMinerStub) DealsImportDataOfSxx(p0 context.Context, p1 cid.Cid, p2 string) error {
 	return ErrNotSupported
 }
 

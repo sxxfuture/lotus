@@ -1229,9 +1229,9 @@ func (sm *StorageMinerAPI) DealsSetExpectedSealDurationFunc(ctx context.Context,
 }
 
 // add by lin
-func (sm *StorageMinerAPI) DealsImportDataOfSxx(ctx context.Context, deal cid.Cid, fname string, worker string) error {
+func (sm *StorageMinerAPI) DealsImportDataOfSxx(ctx context.Context, deal cid.Cid, fname string) error {
 
-	return sm.StorageProvider.ImportDataForDealOfSxx(ctx, deal, fname, worker)
+	return sm.StorageProvider.ImportDataForDealOfSxx(ctx, deal, fname)
 }
 // end
 
