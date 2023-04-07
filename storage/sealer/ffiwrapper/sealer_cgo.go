@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"math/bits"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"syscall"
@@ -38,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 
 	"strings"
+
 	"github.com/filecoin-project/go-fil-markets/shared"
 )
 
@@ -197,7 +199,7 @@ func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 }
 
 // add by lin
-func (sb *Sealer) AddPieceOfSxx(ctx context.Context, sector storiface.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, path string) (abi.PieceInfo, error) {
+func (sb *Sealer) AddPieceOfSxx(ctx context.Context, sector storiface.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, carFilePath string) (abi.PieceInfo, error) {
 	// add by lin
 	isRealData := true
 	sectortype := os.Getenv("LOTUS_SECTOR_TYPE_SXX")
@@ -279,7 +281,7 @@ func (sb *Sealer) AddPieceOfSxx(ctx context.Context, sector storiface.SectorRef,
 	pw := fr32.NewPadWriter(w)
 
 	// 从path读取car数据
-	worker_car_json_file := filepath.Join(os.Getenv("LOTUS_WORKER_PATH"), "./car_path.json")
+	worker_car_json_file := filepath.Join(os.Getenv("LOTUS_WORKER_PATH"), "car_path.json")
 	_, err = os.Stat(worker_car_json_file)
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("don't have json file of car path")
@@ -288,30 +290,31 @@ func (sb *Sealer) AddPieceOfSxx(ctx context.Context, sector storiface.SectorRef,
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("can't read %+v, err: %+v", worker_car_json_file, err)
 	}
-	var car_path CarPath
-	json.Unmarshal(byteValue, &car_path)
-	worker_car_path := ""
-	for _, v := range car_path.Path {
-		worker_car_path = ""
-		dir := path
-		cur := ""
-		for {
-			dir, cur = filepath.Split(dir)
-			dir = filepath.Dir(dir)
-			if filepath.Base(dir) == "/" {
-				worker_car_path = filepath.Join(v, worker_car_path)
+	var carPathConfig CarPath
+	json.Unmarshal(byteValue, &carPathConfig)
+
+	carFileAbsPath := ""
+	pwd, _ := os.Getwd()
+	for _, baseDir := range carPathConfig.Path {
+		joinList := []string{pwd, baseDir, carFilePath}
+		lastAbs := 0
+		for i := len(joinList) - 1; i >= 0; i-- {
+			if path.IsAbs(joinList[i]) {
+				lastAbs = i
 				break
-			} else {
-				worker_car_path = filepath.Join(cur, worker_car_path)
 			}
 		}
-		_, err = os.Stat(worker_car_path)
+
+		carFileAbsPath = path.Join(joinList[lastAbs:]...)
+
+		_, err = os.Stat(carFileAbsPath)
 		if err == nil {
 			break
 		}
 	}
-	log.Infof("zlin: AddPieceOfSxx file name: %+v", worker_car_path)
-	file, err := os.Open(worker_car_path)
+
+	log.Infof("zlin: AddPieceOfSxx file name: %+v", carFileAbsPath)
+	file, err := os.Open(carFileAbsPath)
 	defer file.Close()
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("can't add piece to sector with get car fail: %w", err)
@@ -450,6 +453,7 @@ func (sb *Sealer) AddPieceOfSxx(ctx context.Context, sector storiface.SectorRef,
 		PieceCID: pieceCID,
 	}, nil
 }
+
 // end
 
 func (sb *Sealer) AddPiece(ctx context.Context, sector storiface.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) {
@@ -1191,11 +1195,11 @@ func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef,
 
 	updateProofType := abi.SealProofInfos[sector.ProofType].UpdateProof
 
-	s, err := os.Stat(paths.Sealed)
+	joinList, err := os.Stat(paths.Sealed)
 	if err != nil {
 		return empty, err
 	}
-	sealedSize := s.Size()
+	sealedSize := joinList.Size()
 
 	u, err := os.OpenFile(paths.Update, os.O_RDWR|os.O_CREATE, 0644) // nolint:gosec
 	if err != nil {
@@ -1259,11 +1263,11 @@ func (sb *Sealer) GenerateSectorKeyFromData(ctx context.Context, sector storifac
 		return xerrors.Errorf("failed to acquire sector paths: %w", err)
 	}
 
-	s, err := os.Stat(paths.Update)
+	joinList, err := os.Stat(paths.Update)
 	if err != nil {
 		return xerrors.Errorf("measuring update file size: %w", err)
 	}
-	sealedSize := s.Size()
+	sealedSize := joinList.Size()
 	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0644) // nolint:gosec
 	if err != nil {
 		return xerrors.Errorf("ensuring sector key file exists: %w", err)
@@ -1650,4 +1654,5 @@ func (sb *Sealer) createTemplateFile(unsealedFile string, pieceSize abi.Unpadded
 		}
 	}
 }
+
 // end
