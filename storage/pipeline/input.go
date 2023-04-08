@@ -29,7 +29,7 @@ import (
 
 	"os"
 	"strings"
-	"path/filepath"
+
 	// "io/ioutil"
 	scClient "github.com/moran666666/sector-counter/client"
 )
@@ -223,14 +223,15 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			return xerrors.Errorf("piece %s assigned to sector %d not found", piece, sector.SectorNumber)
 		}
 
-		minerpath := os.Getenv("LOTUS_MINER_PATH")
-		workerpath := filepath.Join(minerpath, "sectorsworker")
-		if err := os.MkdirAll(workerpath, 0755); err != nil && !os.IsExist(err) {
-			log.Errorf("can't mkdir dir %+v, because : %+v", workerpath, err)
-		}
-		if err := os.WriteFile(filepath.Join(workerpath, sector.SectorNumber.String()), []byte(deal.deal.Worker), 0666); err != nil {
-			log.Errorf("can't write file %+v, because : %+v", workerpath, err)
-		}
+		// it seems to write file with empty string
+		// minerpath := os.Getenv("LOTUS_MINER_PATH")
+		// workerpath := filepath.Join(minerpath, "sectorsworker")
+		// if err := os.MkdirAll(workerpath, 0755); err != nil && !os.IsExist(err) {
+		// 	log.Errorf("can't mkdir dir %+v, because : %+v", workerpath, err)
+		// }
+		// if err := os.WriteFile(filepath.Join(workerpath, sector.SectorNumber.String()), []byte(deal.deal.Worker), 0666); err != nil {
+		// 	log.Errorf("can't write file %+v, because : %+v", workerpath, err)
+		// }
 
 		if len(sector.dealIDs())+(i+1) > maxDeals {
 			// todo: this is rather unlikely to happen, but in case it does, return the deal to waiting queue instead of failing it
@@ -296,7 +297,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 					err = xerrors.Errorf("writing piece: %w", err)
 					deal.accepted(sector.SectorNumber, offset, err)
 					return ctx.Send(SectorAddPieceFailed{err})
-			}
+				}
 			} else {
 				log.Errorf("zlin: remotefilepath is : %w", deal.deal.RemoteFilepath)
 				ppi, err = m.sealer.AddPieceOfSxx(sealer.WithPriority(ctx.Context(), DealSectorPriority),
