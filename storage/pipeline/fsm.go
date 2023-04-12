@@ -73,6 +73,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	AddPiece: planOne(
 		on(SectorPieceAdded{}, WaitDeals),
+		on(SectorWaitPC{}, WaitPC),
 		apply(SectorStartPacking{}),
 		apply(SectorAddPiece{}),
 		on(SectorAddPieceFailed{}, AddPieceFailed),
@@ -87,6 +88,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	PreCommit1: planOne(
 		on(SectorPreCommit1{}, PreCommit2),
+		on(SectorWaitAP{}, WaitAP),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorDealsExpired{}, DealsExpired),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
@@ -94,6 +96,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	PreCommit2: planOne(
 		on(SectorPreCommit2{}, PreCommitting),
+		on(SectorWaitAP{}, WaitAP),
 		on(SectorSealPreCommit2Failed{}, SealPreCommit2Failed),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 	),
@@ -699,6 +702,8 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 			e.apply(state)
 			state.State = Committing
 			return uint64(i + 1), nil
+		case SectorWaitC:
+			state.State = WaitC
 		case SectorComputeProofFailed:
 			state.State = ComputeProofFailed
 		case SectorRemoteCommit1Failed, SectorRemoteCommit2Failed:

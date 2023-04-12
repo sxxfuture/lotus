@@ -139,6 +139,18 @@ type SectorOldTicket struct{}
 
 func (evt SectorOldTicket) apply(*SectorInfo) {}
 
+type SectorWaitAP struct{}
+
+func (evt SectorWaitAP) apply(*SectorInfo) {}
+
+type SectorWaitPC struct{}
+
+func (evt SectorWaitPC) apply(*SectorInfo) {}
+
+type SectorWaitC struct{}
+
+func (evt SectorWaitC) apply(*SectorInfo) {}
+
 type SectorPreCommit1 struct {
 	PreCommit1Out storiface.PreCommit1Out
 }
