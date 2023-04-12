@@ -10,6 +10,19 @@
       - v20_of_car_filbase
   # when: manual
 
+"v20-filbase: build lotus (intel)":
+  extends: .build-snippet
+  tags: ["docker", "x86", "intel"]
+  artifacts:
+    name: "v20-filbase-intel binaries"
+    paths: [lotus, lotus-miner, lotus-worker]
+  script:
+    - make lotus lotus-miner lotus-worker
+  only:
+    refs:
+      - v20_of_car_filbase
+  when: manual
+
 "v20-filbase: build external binaries":
   extends: .build-snippet
   artifacts:
