@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 
+	"io/ioutil"
 	"strings"
 	"github.com/filecoin-project/go-fil-markets/shared"
 )

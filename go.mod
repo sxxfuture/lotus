@@ -338,8 +338,13 @@ require (
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
+	github.com/moran666666/sector-counter v0.0.0-00010101000000-000000000000 // indirect
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+
+replace github.com/moran666666/sector-counter => ./extern/sxx-sector-counter
+
+replace github.com/filecoin-project/go-fil-markets => ./extern/sxx-go-fil-markets@v1.27.0-rc1
