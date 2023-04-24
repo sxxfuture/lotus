@@ -289,7 +289,7 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 	}
 
 	if err = dStream.WriteDealProposal(network.Proposal{
-		FastRetrieval: true,
+		FastRetrieval: params.FastRetrieval,
 		DealProposal:  dealProposalSigned,
 		Piece: &storagemarket.DataRef{
 			TransferType: storagemarket.TTManual,
@@ -415,7 +415,7 @@ func (a *API) ClientStatelessDealSxx(ctx context.Context, params *api.StartDealP
 	}
 
 	proposal := network.Proposal{
-		FastRetrieval: true,
+		FastRetrieval: params.FastRetrieval,
 		DealProposal:  dealProposalSigned,
 		Piece: &storagemarket.DataRef{
 			TransferType: storagemarket.TTManual,
