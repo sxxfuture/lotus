@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"math"
 	_ "net/http/pprof"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
@@ -17,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
@@ -25,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 
 	"path/filepath"
+
 	scServer "github.com/moran666666/sector-counter/server"
 )
 
@@ -84,24 +90,6 @@ var runCmd = &cli.Command{
 			os.Unsetenv("LOTUS_WNPOST")
 		}
 
-		scType := cctx.String("sctype")
-		if scType == "alloce" || scType == "get" {
-			os.Setenv("SC_TYPE", scType)
-
-			scListen := cctx.String("sclisten")
-			if scListen == "" {
-				log.Errorf("sclisten must be set")
-				return nil
-			}
-			os.Setenv("SC_LISTEN", scListen)
-
-			if scType == "alloce" {
-				scFilePath := filepath.Join(cctx.String(FlagMinerRepo), "sectorid")
-				go scServer.Run(scFilePath)
-			}
-		} else {
-			os.Unsetenv("SC_TYPE")
-		}
 		if !cctx.Bool("enable-gpu-proving") {
 			err := os.Setenv("BELLMAN_NO_GPU", "true")
 			if err != nil {
@@ -149,6 +137,55 @@ var runCmd = &cli.Command{
 		}
 
 		log.Info("Checking full node sync status")
+
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		scType := cctx.String("sctype")
+		if scType == "alloce" || scType == "get" {
+			os.Setenv("SC_TYPE", scType)
+
+			scListen := cctx.String("sclisten")
+			if scListen == "" {
+				log.Errorf("sclisten must be set")
+				return nil
+			}
+			os.Setenv("SC_LISTEN", scListen)
+
+			if scType == "alloce" {
+
+				maddr, err := minerApi.ActorAddress(ctx)
+				if err != nil {
+					return err
+				}
+				head, err := nodeApi.ChainHead(ctx)
+				if err != nil {
+					return err
+				}
+				activeSet, err := nodeApi.StateMinerActiveSectors(ctx, maddr, head.Key())
+				if err != nil {
+					return err
+				}
+				scFilePath := filepath.Join(cctx.String(FlagMinerRepo), "sectorid")
+
+				osid, err := readFileSid(scFilePath)
+				newsid := math.Max(float64(activeSet[len(activeSet)-1].SectorNumber), float64(osid))
+
+				f, err := os.OpenFile(scFilePath, os.O_WRONLY|os.O_TRUNC, 0600)
+				if err != nil {
+					return err
+				}
+				defer f.Close()
+				strID := strconv.FormatUint(uint64(newsid), 10)
+				_, _ = f.Write([]byte(strID))
+				go scServer.Run(scFilePath)
+			}
+		} else {
+			os.Unsetenv("SC_TYPE")
+		}
 
 		if !cctx.Bool("nosync") {
 			if err := lcli.SyncWait(ctx, &v0api.WrapperV1Full{FullNode: nodeApi}, false); err != nil {
@@ -251,4 +288,36 @@ var runCmd = &cli.Command{
 		<-finishCh
 		return nil
 	},
+}
+
+func readFileSid(filePath string) (uint64, error) {
+	if _, err := os.Stat(filePath); err != nil { // 文件不存在
+		f, err := os.Create(filePath)
+		if err != nil {
+			return 0, err
+		}
+		_, _ = f.Write([]byte("0"))
+		f.Close()
+		return 0, nil
+	}
+
+	// 存在历史文件
+	f, err := os.Open(filePath)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+
+	byteID, err := ioutil.ReadAll(f)
+	if err != nil {
+		return 0, err
+	}
+
+	stringID := strings.Replace(string(byteID), "\n", "", -1)   // 将最后的\n去掉
+	sectorID, err := strconv.ParseUint(string(stringID), 0, 64) // 将字符型数字转化为uint64类型
+	if err != nil {
+		return 0, err
+	}
+
+	return sectorID, nil
 }
