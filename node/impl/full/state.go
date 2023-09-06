@@ -601,6 +601,28 @@ func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) 
 	return &out, nil
 }
 
+func (a *StateAPI) MinerCreateBlockOfSxx(ctx context.Context, bt *api.BlockTemplate) (*types.BlockMsg, error) {
+	fblk, err := a.Consensus.CreateBlockOfSxx(ctx, a.Wallet, bt)
+	if err != nil {
+		return nil, err
+	}
+	if fblk == nil {
+		return nil, nil
+	}
+
+	var out types.BlockMsg
+	out.Header = fblk.Header
+
+	for _, msg := range fblk.BlsMessages {
+		out.BlsMessages = append(out.BlsMessages, msg.Cid())
+	}
+	for _, msg := range fblk.SecpkMessages {
+		out.SecpkMessages = append(out.SecpkMessages, msg.Cid())
+	}
+
+	return &out, nil
+}
+
 func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
 	ts, recpt, found, err := m.StateManager.WaitForMessage(ctx, msg, confidence, lookbackLimit, allowReplaced)
 	if err != nil {

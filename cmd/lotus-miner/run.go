@@ -6,6 +6,7 @@ import (
 	"math"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -28,8 +29,6 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
-
-	"path/filepath"
 
 	scServer "github.com/moran666666/sector-counter/server"
 )
@@ -138,55 +137,6 @@ var runCmd = &cli.Command{
 
 		log.Info("Checking full node sync status")
 
-		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		scType := cctx.String("sctype")
-		if scType == "alloce" || scType == "get" {
-			os.Setenv("SC_TYPE", scType)
-
-			scListen := cctx.String("sclisten")
-			if scListen == "" {
-				log.Errorf("sclisten must be set")
-				return nil
-			}
-			os.Setenv("SC_LISTEN", scListen)
-
-			if scType == "alloce" {
-
-				maddr, err := minerApi.ActorAddress(ctx)
-				if err != nil {
-					return err
-				}
-				head, err := nodeApi.ChainHead(ctx)
-				if err != nil {
-					return err
-				}
-				activeSet, err := nodeApi.StateMinerActiveSectors(ctx, maddr, head.Key())
-				if err != nil {
-					return err
-				}
-				scFilePath := filepath.Join(cctx.String(FlagMinerRepo), "sectorid")
-
-				osid, err := readFileSid(scFilePath)
-				newsid := math.Max(float64(activeSet[len(activeSet)-1].SectorNumber), float64(osid))
-
-				f, err := os.OpenFile(scFilePath, os.O_WRONLY|os.O_TRUNC, 0600)
-				if err != nil {
-					return err
-				}
-				defer f.Close()
-				strID := strconv.FormatUint(uint64(newsid), 10)
-				_, _ = f.Write([]byte(strID))
-				go scServer.Run(scFilePath)
-			}
-		} else {
-			os.Unsetenv("SC_TYPE")
-		}
-
 		if !cctx.Bool("nosync") {
 			if err := lcli.SyncWait(ctx, &v0api.WrapperV1Full{FullNode: nodeApi}, false); err != nil {
 				return xerrors.Errorf("sync wait: %w", err)
@@ -284,6 +234,55 @@ var runCmd = &cli.Command{
 			node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
 			node.ShutdownHandler{Component: "miner", StopFunc: stop},
 		)
+
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		scType := cctx.String("sctype")
+		if scType == "alloce" || scType == "get" {
+			os.Setenv("SC_TYPE", scType)
+
+			scListen := cctx.String("sclisten")
+			if scListen == "" {
+				log.Errorf("sclisten must be set")
+				return nil
+			}
+			os.Setenv("SC_LISTEN", scListen)
+
+			if scType == "alloce" {
+
+				maddr, err := minerApi.ActorAddress(ctx)
+				if err != nil {
+					return err
+				}
+				head, err := nodeApi.ChainHead(ctx)
+				if err != nil {
+					return err
+				}
+				activeSet, err := nodeApi.StateMinerActiveSectors(ctx, maddr, head.Key())
+				if err != nil {
+					return err
+				}
+				scFilePath := filepath.Join(cctx.String(FlagMinerRepo), "sectorid")
+
+				osid, err := readFileSid(scFilePath)
+				newsid := math.Max(float64(activeSet[len(activeSet)-1].SectorNumber), float64(osid))
+
+				f, err := os.OpenFile(scFilePath, os.O_WRONLY|os.O_TRUNC, 0600)
+				if err != nil {
+					return err
+				}
+				defer f.Close()
+				strID := strconv.FormatUint(uint64(newsid), 10)
+				_, _ = f.Write([]byte(strID))
+				go scServer.Run(scFilePath)
+			}
+		} else {
+			os.Unsetenv("SC_TYPE")
+		}
 
 		<-finishCh
 		return nil

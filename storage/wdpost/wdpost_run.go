@@ -20,7 +20,9 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
+	"github.com/filecoin-project/specs-actors/v2/actors/util/math"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+	"github.com/filecoin-project/specs-actors/v8/actors/util/smoothing"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -414,6 +416,10 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 				"height", ts.Height(),
 				"skipped", skipCount)
 
+			if skipCount >= 100 {
+				return nil, xerrors.Errorf("running window post failed: skipped is %d", skipCount)
+			}
+
 			tsStart := build.Clock.Now()
 
 			mid, err := address.IDFromAddress(s.actor)
@@ -762,4 +768,16 @@ func (s *WindowPoStScheduler) ComputePoSt(ctx context.Context, dlIdx uint64, ts 
 
 func (s *WindowPoStScheduler) ManualFaultRecovery(ctx context.Context, maddr address.Address, sectors []abi.SectorNumber) ([]cid.Cid, error) {
 	return s.declareManualRecoveries(ctx, maddr, sectors, types.TipSetKey{})
+}
+
+func ExpectedRewardForPower(rewardEstimate, networkQAPowerEstimate smoothing.FilterEstimate, qaSectorPower abi.StoragePower, projectionDuration abi.ChainEpoch) abi.TokenAmount {
+	networkQAPowerSmoothed := smoothing.Estimate(&networkQAPowerEstimate)
+	if networkQAPowerSmoothed.IsZero() {
+		return smoothing.Estimate(&rewardEstimate)
+	}
+	expectedRewardForProvingPeriod := smoothing.ExtrapolatedCumSumOfRatio(projectionDuration, 0, rewardEstimate, networkQAPowerEstimate)
+	br128 := big.Mul(qaSectorPower, expectedRewardForProvingPeriod) // Q.0 * Q.128 => Q.128
+	br := big.Rsh(br128, math.Precision128)
+
+	return big.Max(br, big.Zero())
 }

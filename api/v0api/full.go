@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -28,7 +29,6 @@ import (
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=v0mocks/mock_full.go -package=v0mocks . FullNode
@@ -271,6 +271,7 @@ type FullNode interface {
 
 	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) //perm:read
 	MinerCreateBlock(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
+	MinerCreateBlockOfSxx(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                              //perm:write
 
 	// // UX ?
 
@@ -319,7 +320,7 @@ type FullNode interface {
 	// ClientStartDeal proposes a deal with a miner.
 	ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) //perm:admin
 	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
-	ClientStatelessDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) //perm:write
+	ClientStatelessDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)             //perm:write
 	ClientStatelessDealSxx(ctx context.Context, params *api.StartDealParams) (*network.Proposal, error) //perm:write
 	// ClientGetDealInfo returns the latest information about a given deal.
 	ClientGetDealInfo(context.Context, cid.Cid) (*api.DealInfo, error) //perm:read

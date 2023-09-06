@@ -1,10 +1,13 @@
 package cliutil
 
 import (
+	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
@@ -44,6 +47,49 @@ func ParseApiInfoMulti(s string) []APIInfo {
 
 	for _, addr := range allAddrs {
 		apiInfos = append(apiInfos, ParseApiInfo(addr))
+	}
+
+	return apiInfos
+}
+
+func isURLAvailable(url string, timeout time.Duration) bool {
+	parts := strings.Split(url, "/")
+	if len(parts) < 5 {
+		return false
+	}
+
+	ip := parts[2]
+	port := parts[4]
+
+	address := fmt.Sprintf("%s:%s", ip, port)
+
+	// 发送HTTP GET请求
+	conn, err := net.DialTimeout("tcp", address, timeout)
+	if err != nil {
+		fmt.Println("无法连接到地址:", err)
+		return false
+	}
+	defer conn.Close()
+
+	// log.Infof("成功连接到URL: %+v", url)
+	return true
+}
+
+func ParseApiInfoMultiOfSxx(s string) []APIInfo {
+	var apiInfos []APIInfo
+
+	allAddrs := strings.SplitN(s, ",", -1)
+
+	for _, addr := range allAddrs {
+		apiInfos = append(apiInfos, ParseApiInfo(addr))
+	}
+
+	timeout := 2 * time.Second
+	for i := 0; i < len(apiInfos); i++ {
+		if !isURLAvailable(apiInfos[i].Addr, timeout) {
+			apiInfos = append(apiInfos[:i], apiInfos[i+1:]...)
+			i-- // 因为删除元素后切片长度减少了，需要减少索引以继续遍历
+		}
 	}
 
 	return apiInfos

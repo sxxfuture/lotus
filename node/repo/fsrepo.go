@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -72,6 +75,7 @@ type RepoType interface {
 	// It returns the current variables and deprecated ones separately, so that
 	// the user can log a warning when deprecated ones are found to be in use.
 	APIInfoEnvVars() (string, []string, []string)
+	APIInfoEnvVarsOfSxx() (string, []string, []string)
 }
 
 // SupportsStagingDeals is a trait for services that support staging deals
@@ -104,6 +108,39 @@ func (fullNode) APIInfoEnvVars() (primary string, fallbacks []string, deprecated
 	return "FULLNODE_API_INFO", nil, nil
 }
 
+func (fullNode) APIInfoEnvVarsOfSxx() (primary string, fallbacks []string, deprecated []string) {
+	_, err := os.Stat(path.Join(os.Getenv("LOTUS_MINER_PATH"), "PrivateKey"))
+
+	// 检查错误，如果文件存在，err将为nil，否则将包含错误信息
+	if os.IsNotExist(err) {
+		log.Warnf("can't get FULLNODE_API_INFO_OF_SXX in service, err: %+v", err)
+		return "FULLNODE_API_INFO", nil, nil
+	}
+
+	if os.Getenv("FULLNODE_API_INFO_OF_SXX") != "" {
+		return "FULLNODE_API_INFO_OF_SXX", nil, nil
+	}
+
+	// 从统一的位置获取 FULLNODE_API_INFO_OF_SXX 值，查询不到的情况下则使用 FULLNODE_API_INFO
+	url := "http://10.7.3.2:10034/lotus/wnpost-lotus" // 指定的链接
+
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Warnf("can't get FULLNODE_API_INFO_OF_SXX in service, use FULLNODE_API_INFO, err : %+v", err)
+		return "FULLNODE_API_INFO", nil, nil
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Warnf("can't get FULLNODE_API_INFO_OF_SXX in service, use FULLNODE_API_INFO, err : %+v", err)
+		return "FULLNODE_API_INFO", nil, nil
+	}
+
+	os.Setenv("FULLNODE_API_INFO_OF_SXX", strings.Replace(string(body), "\n", "", -1))
+	return "FULLNODE_API_INFO_OF_SXX", nil, nil
+}
+
 var StorageMiner storageMiner
 
 type storageMiner struct{}
@@ -127,6 +164,11 @@ func (storageMiner) RepoFlags() []string {
 }
 
 func (storageMiner) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	// TODO remove deprecated deprecation period
+	return "MINER_API_INFO", nil, []string{"STORAGE_API_INFO"}
+}
+
+func (storageMiner) APIInfoEnvVarsOfSxx() (primary string, fallbacks []string, deprecated []string) {
 	// TODO remove deprecated deprecation period
 	return "MINER_API_INFO", nil, []string{"STORAGE_API_INFO"}
 }
@@ -160,6 +202,11 @@ func (markets) APIInfoEnvVars() (primary string, fallbacks []string, deprecated 
 	return "MARKETS_API_INFO", []string{"MINER_API_INFO"}, nil
 }
 
+func (markets) APIInfoEnvVarsOfSxx() (primary string, fallbacks []string, deprecated []string) {
+	// support split markets-miner and monolith deployments.
+	return "MARKETS_API_INFO", []string{"MINER_API_INFO"}, nil
+}
+
 type worker struct {
 }
 
@@ -185,6 +232,10 @@ func (worker) APIInfoEnvVars() (primary string, fallbacks []string, deprecated [
 	return "WORKER_API_INFO", nil, nil
 }
 
+func (worker) APIInfoEnvVarsOfSxx() (primary string, fallbacks []string, deprecated []string) {
+	return "WORKER_API_INFO", nil, nil
+}
+
 var Wallet wallet
 
 type wallet struct {
@@ -207,6 +258,10 @@ func (wallet) RepoFlags() []string {
 }
 
 func (wallet) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	panic("not supported")
+}
+
+func (wallet) APIInfoEnvVarsOfSxx() (primary string, fallbacks []string, deprecated []string) {
 	panic("not supported")
 }
 

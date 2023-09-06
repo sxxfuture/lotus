@@ -51,6 +51,7 @@ var ReqContext = cliutil.ReqContext
 
 var GetFullNodeAPI = cliutil.GetFullNodeAPI
 var GetFullNodeAPIV1 = cliutil.GetFullNodeAPIV1
+var GetFullNodeAPIV1OfSxx = cliutil.GetFullNodeAPIV1OfSxx
 var GetGatewayAPI = cliutil.GetGatewayAPI
 
 var GetStorageMinerAPI = cliutil.GetStorageMinerAPI
