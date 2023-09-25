@@ -333,6 +333,10 @@ type StorageMiner interface {
 	// to the miner actor with details of recovered sectors and returns the CID of messages. It honors the
 	// maxPartitionsPerRecoveryMessage from the config
 	RecoverFault(ctx context.Context, sectors []abi.SectorNumber) ([]cid.Cid, error) //perm:admin
+
+	// add by pan for GPU cluster
+	ResetCluster(ctx context.Context, addr string) (string, error) //perm:read
+	// end
 }
 
 var _ storiface.WorkerReturn = *new(StorageMiner)

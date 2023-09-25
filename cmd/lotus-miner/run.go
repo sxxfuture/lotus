@@ -31,6 +31,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 
 	scServer "github.com/moran666666/sector-counter/server"
+
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 var runCmd = &cli.Command{
@@ -75,6 +77,12 @@ var runCmd = &cli.Command{
 			Usage: "host address and port the sector counter will listen on",
 			Value: "",
 		},
+		// add by pan for GPU cluster
+		&cli.StringFlag{
+			Name:  "cluster",
+			Usage: "cluster rpc listener or address. listener 10.8.1.8:1080 or address http://10.8.1.8:1080/rpc/v0",
+		},
+		// end
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Bool("wdpost") {
@@ -283,6 +291,23 @@ var runCmd = &cli.Command{
 		} else {
 			os.Unsetenv("SC_TYPE")
 		}
+
+		// add by pan for GPU cluster
+		if cctx.IsSet("cluster") {
+			addr := cctx.String("cluster")
+			if !strings.Contains(addr, "http") {
+				addr = fmt.Sprintf("http://%s/rpc/v0", addr)
+			}
+			log.Infof("endpoint %s", endpoint)
+			ss := strings.Split(endpoint.String(), "/")
+			port, err := strconv.Atoi(ss[len(ss)-2])
+			if err == nil {
+				ffiwrapper.LOTUS_MINER_PORT = port
+				log.Infof("endpoint port %d", port)
+			}
+			minerapi.ResetCluster(ctx, addr)
+		}
+		// end
 
 		<-finishCh
 		return nil

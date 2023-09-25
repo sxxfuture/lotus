@@ -1142,6 +1142,10 @@ type StorageMinerMethods struct {
 	WorkerJobs func(p0 context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) `perm:"admin"`
 
 	WorkerStats func(p0 context.Context) (map[uuid.UUID]storiface.WorkerStats, error) `perm:"admin"`
+
+	// add by pan for GPU cluster
+	ResetCluster func(ctx context.Context, addr string) (string, error) `perm:"read"`
+	// end
 }
 
 type StorageMinerStub struct {
@@ -5939,6 +5943,15 @@ func (s *StorageMinerStruct) RecoverFault(p0 context.Context, p1 []abi.SectorNum
 	}
 	return s.Internal.RecoverFault(p0, p1)
 }
+
+// add by pan for GPU cluster
+func (s *StorageMinerStruct) ResetCluster(ctx context.Context, addr string) (string,error) {
+	if s.Internal.ResetCluster == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.ResetCluster(ctx, addr)
+}
+// end 
 
 func (s *StorageMinerStub) RecoverFault(p0 context.Context, p1 []abi.SectorNumber) ([]cid.Cid, error) {
 	return *new([]cid.Cid), ErrNotSupported
