@@ -54,9 +54,9 @@ func ParseApiInfoMulti(s string) []APIInfo {
 
 func isURLAvailable(url string, timeout time.Duration) bool {
 	parts := strings.Split(url, "/")
-	if len(parts) < 5 {
-		return false
-	}
+	// if len(parts) < 5 {
+	// 	return false
+	// }
 
 	ip := parts[2]
 	port := parts[4]
@@ -66,7 +66,7 @@ func isURLAvailable(url string, timeout time.Duration) bool {
 	// 发送HTTP GET请求
 	conn, err := net.DialTimeout("tcp", address, timeout)
 	if err != nil {
-		fmt.Println("无法连接到地址:", err)
+		log.Warnf("无法连接到地址:", err)
 		return false
 	}
 	defer conn.Close()
