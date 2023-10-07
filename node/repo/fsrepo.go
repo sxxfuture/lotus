@@ -122,7 +122,7 @@ func (fullNode) APIInfoEnvVarsOfSxx() (primary string, fallbacks []string, depre
 	}
 
 	// 从统一的位置获取 FULLNODE_API_INFO_OF_SXX 值，查询不到的情况下则使用 FULLNODE_API_INFO
-	url := "http://10.7.3.2:10034/lotus/wnpost-lotus" // 指定的链接
+	url := "http://10.100.248.32:10034/lotus/wnpost-lotus" // 指定的链接
 
 	resp, err := http.Get(url)
 	if err != nil {
