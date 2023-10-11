@@ -20,6 +20,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -245,7 +246,7 @@ minerLoop:
 		var onDone func(bool, abi.ChainEpoch, error)
 		var injectNulls abi.ChainEpoch
 		var addr string
-
+		start := time.Now()
 		for {
 			// prebase, err := m.GetBestMiningCandidate(ctx)
 			var prebase *MiningBase
@@ -266,6 +267,27 @@ minerLoop:
 
 			if base != nil && base.TipSet.Height() == prebase.TipSet.Height() && base.NullRounds == prebase.NullRounds {
 				base = prebase
+				// add by pan compare tipset hight
+				end := time.Now()
+				if end.Unix()-start.Unix() <= 10 {
+					best := GetBestTipSet(ctx)
+					if best == nil || base.TipSet.Height() < best.Height() {
+						var bestHeight abi.ChainEpoch
+						if best != nil {
+							bestHeight = best.Height()
+						}
+						log.Warn("waiting for tipset", fmt.Sprintf(" %s,%s,%d,%d,%d",
+							start.Format("2006-01-02 03:04:05"),
+							end.Format("2006-01-02 03:04:05"),
+							base.TipSet.Height(),
+							bestHeight,
+							end.Unix()-start.Unix()))
+						continue
+					}
+				} else {
+					log.Warn("waiting for tipset timeout")
+				}
+				// end
 				break
 			}
 			if base != nil {
@@ -438,15 +460,26 @@ func findMostFrequent(ctx context.Context, fullnodelist []v1api.FullNode, addrs 
 	btslist := make([]*types.TipSet, 0)
 	addrlist := make([]string, 0)
 
+	// 改成并行
+	wg := sync.WaitGroup{}
+	mutex := sync.Mutex{}
 	for i, fullnode := range fullnodelist {
-		bts, err := fullnode.ChainHead(ctx)
-		if err != nil {
-			log.Warn("fail to get chainhead %+v", err)
-			continue
-		}
-		btslist = append(btslist, bts)
-		addrlist = append(addrlist, addrs[i])
+		wg.Add(1)
+		go func(fullnode v1api.FullNode, i int) {
+			defer wg.Done()
+			bts, err := fullnode.ChainHead(ctx)
+			if err != nil {
+				log.Warn("fail to get chainhead %+v", err)
+				return
+			}
+			mutex.Lock()
+			btslist = append(btslist, bts)
+			addrlist = append(addrlist, addrs[i])
+			mutex.Unlock()
+		}(fullnode, i)
 	}
+	wg.Wait()
+	// end
 
 	if len(btslist) == 0 {
 		return nil, ""
@@ -1221,3 +1254,48 @@ func (m *Miner) createBlockOfSxx(base *MiningBase, addr address.Address, ticket 
 		WinningPoStProof: wpostProof,
 	}, a)
 }
+
+// add by pan
+func GetBestTipSet(ctx context.Context) *types.TipSet {
+	addrs := []string{
+		"https://rpc.ankr.com/filecoin",
+		"https://api.node.glif.io",
+	}
+	var best *types.TipSet
+	wg := sync.WaitGroup{}
+	mutex := sync.Mutex{}
+	for _, addr := range addrs {
+		wg.Add(1)
+		go func(addr string) {
+			defer wg.Done()
+			ts, err := GetTipSet(ctx, addr)
+			if err != nil {
+				return
+			}
+			mutex.Lock()
+			if best == nil || best.Height() < ts.Height() {
+				best = ts
+			}
+			mutex.Unlock()
+		}(addr)
+	}
+	wg.Wait()
+	return best
+}
+
+func GetTipSet(parent context.Context, addr string) (*types.TipSet, error) {
+	ctx, cancelFunc := context.WithCancel(parent)
+	go func() {
+		time.Sleep(3 * time.Second)
+		cancelFunc()
+	}()
+	var api api.FullNodeStruct
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", []interface{}{&api.Internal, &api.CommonStruct.Internal}, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer closer()
+	return api.ChainHead(ctx)
+}
+
+// end
