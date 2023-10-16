@@ -272,16 +272,20 @@ minerLoop:
 				if end.Unix()-start.Unix() <= 10 {
 					best := GetBestTipSet(ctx)
 					var bestHeight abi.ChainEpoch
+					var bestLen int
 					if best != nil {
 						bestHeight = best.Height()
+						bestLen = len(best.Key().Cids())
 					}
-					log.Warn("waiting for tipset", fmt.Sprintf(" %s,%s,%d,%d,%d",
+					log.Warn("waiting for tipset", fmt.Sprintf(" %s,%s,%d,%d,%d,%d,%d",
 						start.Format("2006-01-02 03:04:05"),
 						end.Format("2006-01-02 03:04:05"),
 						base.TipSet.Height(),
 						bestHeight,
+						len(base.TipSet.Key().Cids()),
+						bestLen,
 						end.Unix()-start.Unix()))
-					if best == nil || base.TipSet.Height() < best.Height() {
+					if best == nil || base.TipSet.Height() < best.Height() || len(base.TipSet.Key().Cids()) < len(best.Key().Cids()) {
 						continue
 					}
 				} else {
