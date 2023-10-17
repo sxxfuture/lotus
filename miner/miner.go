@@ -269,7 +269,7 @@ minerLoop:
 				base = prebase
 				// add by pan compare tipset hight
 				end := time.Now()
-				if end.Unix()-start.Unix() <= 10 {
+				if end.Unix()-start.Unix() <= 5 {
 					best := GetBestTipSet(ctx)
 					var bestHeight abi.ChainEpoch
 					var bestLen int
