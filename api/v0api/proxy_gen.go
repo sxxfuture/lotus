@@ -29,6 +29,7 @@ import (
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -144,6 +145,8 @@ type FullNodeMethods struct {
 
 	ClientStatelessDeal func(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) `perm:"write"`
 
+	ClientStatelessDealSxx func(p0 context.Context, p1 *api.StartDealParams) (*network.Proposal, error) `perm:"write"`
+
 	CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
 	GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
@@ -165,6 +168,7 @@ type FullNodeMethods struct {
 	MarketWithdraw func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) `perm:"sign"`
 
 	MinerCreateBlock func(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) `perm:"write"`
+	MinerCreateBlockOfSxx func(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) `perm:"write"`
 
 	MinerGetBaseInfo func(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
 
@@ -1089,6 +1093,17 @@ func (s *FullNodeStub) ClientStatelessDeal(p0 context.Context, p1 *api.StartDeal
 	return nil, ErrNotSupported
 }
 
+func (s *FullNodeStruct) ClientStatelessDealSxx(p0 context.Context, p1 *api.StartDealParams) (*network.Proposal, error) {
+	if s.Internal.ClientStatelessDealSxx == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ClientStatelessDealSxx(p0, p1)
+}
+
+func (s *FullNodeStub) ClientStatelessDealSxx(p0 context.Context, p1 *api.StartDealParams) (*network.Proposal, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) error {
 	if s.Internal.CreateBackup == nil {
 		return ErrNotSupported
@@ -1207,6 +1222,17 @@ func (s *FullNodeStruct) MinerCreateBlock(p0 context.Context, p1 *api.BlockTempl
 }
 
 func (s *FullNodeStub) MinerCreateBlock(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) MinerCreateBlockOfSxx(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) {
+	if s.Internal.MinerCreateBlock == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.MinerCreateBlockOfSxx(p0, p1)
+}
+
+func (s *FullNodeStub) MinerCreateBlockOfSxx(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) {
 	return nil, ErrNotSupported
 }
 

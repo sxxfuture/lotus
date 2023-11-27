@@ -40,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/strle"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const parallelSectorChecks = 300
@@ -75,6 +76,12 @@ var sectorsCmd = &cli.Command{
 var sectorsPledgeCmd = &cli.Command{
 	Name:  "pledge",
 	Usage: "store random data in a sector",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "worker",
+			Value: "",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -86,6 +93,18 @@ var sectorsPledgeCmd = &cli.Command{
 		id, err := minerApi.PledgeSector(ctx)
 		if err != nil {
 			return err
+		}
+
+		worker := cctx.String("worker")
+		if worker != "" {
+			minerpath := os.Getenv("LOTUS_MINER_PATH")
+			path := minerpath + "/sectors"
+			_, err = os.Stat(path)
+			if os.IsNotExist(err) {
+				err = os.Mkdir(path, 0755)
+			}
+			path = path + "/" + storiface.SectorName(id)
+			err = os.WriteFile(path, []byte(worker), 0666)
 		}
 
 		fmt.Println("Created CC sector: ", id.Number)

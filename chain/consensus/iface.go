@@ -43,6 +43,7 @@ type Consensus interface {
 	// such as the ordering of transactions, the inclusion of consensus proofs, the signature
 	// of the block, etc.
 	CreateBlock(ctx context.Context, w api.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error)
+	CreateBlockOfSxx(ctx context.Context, w api.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error)
 }
 
 // RewardFunc parametrizes the logic for rewards when a message is executed.

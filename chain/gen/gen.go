@@ -3,9 +3,13 @@ package gen
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"path"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -41,9 +45,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -667,12 +673,79 @@ func IsRoundWinner(ctx context.Context, round abi.ChainEpoch,
 	return ep, nil
 }
 
+func IsRoundWinnerOfSxx(ctx context.Context, round abi.ChainEpoch,
+	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI) (*types.ElectionProof, error) {
+
+	buf := new(bytes.Buffer)
+	if err := miner.MarshalCBOR(buf); err != nil {
+		return nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
+	}
+
+	electionRand, err := rand.DrawRandomnessFromBase(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to draw randomness: %w", err)
+	}
+
+	// vrfout, err := ComputeVRF(ctx, a.WalletSign, mbi.WorkerKey, electionRand)
+	vrfout, err := ComputeVRFOfSxx(ctx, a.WalletSign, mbi.WorkerKey, electionRand)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
+	}
+
+	ep := &types.ElectionProof{VRFProof: vrfout}
+	j := ep.ComputeWinCount(mbi.MinerPower, mbi.NetworkPower)
+	ep.WinCount = j
+	if j < 1 {
+		return nil, nil
+	}
+
+	return ep, nil
+}
+
 type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
+
+func WalletSign(ctx context.Context, msg []byte) (*crypto.Signature, error) {
+
+	inpdata, err := os.ReadFile(path.Join(os.Getenv("LOTUS_MINER_PATH"), "PrivateKey"))
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := hex.DecodeString(strings.TrimSpace(string(inpdata)))
+	if err != nil {
+		return nil, err
+	}
+
+	var ki types.KeyInfo
+	if err := json.Unmarshal(data, &ki); err != nil {
+		return nil, err
+	}
+
+	return sigs.Sign(key.ActSigType(ki.Type), ki.PrivateKey, msg)
+}
 
 func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigInput []byte) ([]byte, error) {
 	sig, err := sign(ctx, worker, sigInput)
 	if err != nil {
 		return nil, err
+	}
+
+	if sig.Type != crypto.SigTypeBLS {
+		return nil, fmt.Errorf("miner worker address was not a BLS key")
+	}
+
+	return sig.Data, nil
+}
+
+func ComputeVRFOfSxx(ctx context.Context, sign SignFunc, worker address.Address, sigInput []byte) ([]byte, error) {
+	// sig, err := sign(ctx, worker, sigInput)
+	sig, err := WalletSign(ctx, sigInput)
+	if err != nil {
+		return nil, err
+	}
+
+	if sig == nil {
+		return nil, xerrors.Errorf("failed to get sign")
 	}
 
 	if sig.Type != crypto.SigTypeBLS {

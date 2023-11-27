@@ -11,6 +11,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	"os"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -167,6 +169,8 @@ func main() {
 	}
 	app.Setup()
 	app.Metadata["repoType"] = repo.StorageMiner
+	os.Setenv("LOTUS_WDPOST", "true")
+	os.Setenv("LOTUS_WNPOST", "true")
 	lcli.RunApp(app)
 }
 

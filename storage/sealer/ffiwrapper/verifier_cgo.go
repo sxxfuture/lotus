@@ -14,6 +14,8 @@ import (
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+
+	"github.com/filecoin-project/go-jsonrpc"
 )
 
 func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
@@ -35,6 +37,31 @@ func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 		return nil, xerrors.Errorf("pubSectorToPriv skipped sectors: %+v", skipped)
 	}
 
+	// add by pan for GPU cluster
+	addr := LOTUS_CLUSTER_ADDR
+	if addr != "" {
+		var handler struct {
+			GenerateWinningPoSt func(
+				minerID abi.ActorID,
+				privateSectorInfo ffi.SortedPrivateSectorInfo,
+				randomness abi.PoStRandomness,
+			) ([]proof.PoStProof, error)
+		}
+		closer, err := jsonrpc.NewClient(context.Background(), addr, "Filecoin", &handler, nil)
+		if err == nil {
+			defer closer()
+			proof, err := handler.GenerateWinningPoSt(minerID, privsectors, randomness)
+			if err == nil {
+				return proof, err
+			} else {
+				log.Warn(addr+" Handler GenerateWinningPoSt failed: ", err)
+			}
+		} else {
+			log.Warn(addr+" get Handler failed: ", err)
+		}
+	}
+	// end
+
 	return ffi.GenerateWinningPoSt(minerID, privsectors, randomness)
 }
 
@@ -50,6 +77,38 @@ func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, p
 	if len(skipped) > 0 {
 		return nil, skipped, xerrors.Errorf("pubSectorToPriv skipped some sectors")
 	}
+
+	// add by pan for GPU cluster
+	addr := LOTUS_CLUSTER_ADDR
+	if addr != "" {
+		var handler struct {
+			GenerateWindowPoSt func(
+				minerID abi.ActorID,
+				privateSectorInfo ffi.SortedPrivateSectorInfo,
+				randomness abi.PoStRandomness,
+			) (*WindowPoStResult, error)
+		}
+		closer, err := jsonrpc.NewClient(context.Background(), addr, "Filecoin", &handler, nil)
+		if err == nil {
+			defer closer()
+			result, err := handler.GenerateWindowPoSt(minerID, privsectors, randomness)
+			if err == nil {
+				var faultyIDs []abi.SectorID
+				for _, f := range result.Faulty {
+					faultyIDs = append(faultyIDs, abi.SectorID{
+						Miner:  minerID,
+						Number: f,
+					})
+				}
+				return result.Proof, faultyIDs, err
+			} else {
+				log.Warn(addr+" Handler GenerateWindowPoSt failed: ", err)
+			}
+		} else {
+			log.Warn(addr+" get Handler failed: ", err)
+		}
+	}
+	// end
 
 	proof, faulty, err := ffi.GenerateWindowPoSt(minerID, privsectors, randomness)
 
@@ -168,3 +227,14 @@ func (proofVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, pro
 	randomness[31] &= 0x3f
 	return ffi.GenerateWinningPoStSectorChallenge(proofType, minerID, randomness, eligibleSectorCount)
 }
+
+// add by pan for GPU cluster
+var LOTUS_CLUSTER_ADDR string
+var LOTUS_MINER_PORT int
+
+type WindowPoStResult struct {
+	Proof  []proof.PoStProof
+	Faulty []abi.SectorNumber
+}
+
+// end

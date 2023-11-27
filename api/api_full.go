@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -310,6 +311,7 @@ type FullNode interface {
 
 	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error) //perm:read
 	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
+	MinerCreateBlockOfSxx(context.Context, *BlockTemplate) (*types.BlockMsg, error)                              //perm:write
 
 	// // UX ?
 
@@ -358,7 +360,8 @@ type FullNode interface {
 	// ClientStartDeal proposes a deal with a miner.
 	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error) //perm:admin
 	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
-	ClientStatelessDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error) //perm:write
+	ClientStatelessDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error)             //perm:write
+	ClientStatelessDealSxx(ctx context.Context, params *StartDealParams) (*network.Proposal, error) //perm:write
 	// ClientGetDealInfo returns the latest information about a given deal.
 	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error) //perm:read
 	// ClientListDeals returns information about the deals made by the local client.
@@ -1168,6 +1171,7 @@ type StartDealParams struct {
 	DealStartEpoch     abi.ChainEpoch
 	FastRetrieval      bool
 	VerifiedDeal       bool
+	Peerid             *peer.ID
 }
 
 func (s *StartDealParams) UnmarshalJSON(raw []byte) (err error) {

@@ -30,6 +30,17 @@ import (
 
 var log = logging.Logger("providerstates")
 
+// add by lin
+type ReadSeekStarter struct {
+	io.Reader
+}
+
+func (r *ReadSeekStarter) SeekStart() error {
+	return nil
+}
+
+// end
+
 // TODO: These are copied from spec-actors master, use spec-actors exports when we update
 const DealMaxLabelSize = 256
 
@@ -328,6 +339,68 @@ func WaitForPublish(ctx fsm.Context, environment ProviderDealEnvironment, deal s
 
 	return ctx.Trigger(storagemarket.ProviderEventDealPublished, res.DealID, res.FinalCid)
 }
+
+// add by lin
+func HandoffDealOfSxx(ctx fsm.Context, environment ProviderDealEnvironment, deal storagemarket.MinerDeal) error {
+	carFilePath := string(deal.PiecePath)
+	if deal.PiecePath == "" {
+		err := xerrors.Errorf("our path of deal car is nil")
+		return ctx.Trigger(storagemarket.ProviderEventDealHandoffFailed, err)
+	}
+	// Data for offline deals is stored on disk, so if PiecePath is set,
+	// create a Reader from the file path
+	var reader shared.ReadSeekStarter
+	reader = &ReadSeekStarter{io.LimitReader(nil, 0)}
+
+	packingInfo, err := environment.Node().OnDealCompleteOfSxx(
+		ctx.Context(),
+		storagemarket.MinerDeal{
+			Client:             deal.Client,
+			ClientDealProposal: deal.ClientDealProposal,
+			ProposalCid:        deal.ProposalCid,
+			State:              deal.State,
+			Ref:                deal.Ref,
+			PublishCid:         deal.PublishCid,
+			DealID:             deal.DealID,
+			FastRetrieval:      deal.FastRetrieval,
+			RemoteFilepath:     carFilePath,
+		},
+		deal.Proposal.PieceSize.Unpadded(),
+		reader,
+	)
+
+	if err != nil {
+		err = xerrors.Errorf("packing piece at path %s: %w", deal.PiecePath, err)
+		return ctx.Trigger(storagemarket.ProviderEventDealHandoffFailed, err)
+	}
+
+	if err := recordPiece(environment, deal, packingInfo.SectorNumber, packingInfo.Offset, packingInfo.Size); err != nil {
+		err = xerrors.Errorf("failed to register deal data for piece %s for retrieval: %w", deal.Ref.PieceCid, err)
+		log.Error(err.Error())
+		_ = ctx.Trigger(storagemarket.ProviderEventPieceStoreErrored, err)
+	}
+
+	// Register the deal data as a "shard" with the DAG store. Later it can be
+	// fetched from the DAG store during retrieval.
+	if err := environment.RegisterShard(ctx.Context(), deal.Proposal.PieceCID, carFilePath, true); err != nil {
+		err = xerrors.Errorf("failed to activate shard: %w", err)
+		log.Error(err)
+	}
+
+	// announce the deal to the network indexer
+	annCid, err := environment.AnnounceIndex(ctx.Context(), deal)
+	if err != nil {
+		log.Errorw("failed to announce index via reference provider", "proposalCid", deal.ProposalCid, "err", err)
+	} else {
+		log.Infow("deal announcement sent to index provider", "advertisementCid", annCid, "shard-key", deal.Proposal.PieceCID,
+			"proposalCid", deal.ProposalCid)
+	}
+
+	log.Infow("successfully handed off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
+	return ctx.Trigger(storagemarket.ProviderEventDealHandedOff)
+}
+
+// end
 
 // HandoffDeal hands off a published deal for sealing and commitment in a sector
 func HandoffDeal(ctx fsm.Context, environment ProviderDealEnvironment, deal storagemarket.MinerDeal) error {

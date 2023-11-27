@@ -101,6 +101,15 @@ var ProviderEvents = fsm.Events{
 			deal.MetadataPath = metadataPath
 			return nil
 		}),
+	// add by lin
+	fsm.Event(storagemarket.ProviderEventVerifiedDataOfSxx).
+		From(storagemarket.StorageDealWaitingForData).To(storagemarket.StorageDealReserveProviderFunds).
+		Action(func(deal *storagemarket.MinerDeal, path filestore.Path, metadataPath filestore.Path) error {
+			deal.PiecePath = path
+			deal.MetadataPath = metadataPath
+			return nil
+		}),
+	// end
 	fsm.Event(storagemarket.ProviderEventFundingInitiated).
 		From(storagemarket.StorageDealReserveProviderFunds).To(storagemarket.StorageDealProviderFunding).
 		Action(func(deal *storagemarket.MinerDeal, mcid cid.Cid) error {

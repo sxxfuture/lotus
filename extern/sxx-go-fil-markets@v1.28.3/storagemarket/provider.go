@@ -59,6 +59,10 @@ type StorageProvider interface {
 	// ImportDataForDeal manually imports data for an offline storage deal
 	ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader) error
 
+	// add by lin
+	ImportDataForDealOfSxx(ctx context.Context, propCid cid.Cid, path string) error
+	// end
+
 	// SubscribeToEvents listens for events that happen related to storage deals on a provider
 	SubscribeToEvents(subscriber ProviderSubscriber) shared.Unsubscribe
 

@@ -44,3 +44,23 @@ func (filec *FilecoinEC) CreateBlock(ctx context.Context, w api.Wallet, bt *api.
 
 	return fullBlock, nil
 }
+
+func (filec *FilecoinEC) CreateBlockOfSxx(ctx context.Context, w api.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error) {
+	pts, err := filec.sm.ChainStore().LoadTipSet(ctx, bt.Parents)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
+	}
+
+	next, blsMessages, secpkMessages, err := consensus.CreateBlockHeader(ctx, filec.sm, pts, bt)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to process messages from block template: %w", err)
+	}
+
+	fullBlock := &types.FullBlock{
+		Header:        next,
+		BlsMessages:   blsMessages,
+		SecpkMessages: secpkMessages,
+	}
+
+	return fullBlock, nil
+}

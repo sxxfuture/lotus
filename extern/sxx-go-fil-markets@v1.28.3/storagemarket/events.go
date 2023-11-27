@@ -292,6 +292,11 @@ const (
 	// ProviderEventAwaitTransferRestartTimeout is dispatched after a certain amount of time a provider has been
 	// waiting for a data transfer to restart. If transfer hasn't restarted, the provider will fail the deal
 	ProviderEventAwaitTransferRestartTimeout
+
+	// add by lin
+	ProviderEventVerifiedDataOfSxx
+	ProviderEventDealPublishedOfSxx
+	// end
 )
 
 // ProviderEvents maps provider event codes to string names
@@ -339,6 +344,10 @@ var ProviderEvents = map[ProviderEvent]string{
 	ProviderEventDealPrecommitFailed:         "ProviderEventDealPrecommitFailed",
 	ProviderEventDealPrecommitted:            "ProviderEventDealPrecommitted",
 	ProviderEventAwaitTransferRestartTimeout: "ProviderEventAwaitTransferRestartTimeout",
+	// add by lin
+	ProviderEventVerifiedDataOfSxx:  "ProviderEventVerifiedDataOfSxx",
+	ProviderEventDealPublishedOfSxx: "ProviderEventDealPublishedOfSxx",
+	// end
 }
 
 func (e ProviderEvent) String() string {

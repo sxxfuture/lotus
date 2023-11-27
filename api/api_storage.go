@@ -296,22 +296,23 @@ type StorageMiner interface {
 	// in this instance.
 	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read
 
-	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
-	DealsList(ctx context.Context) ([]*MarketDeal, error)                        //perm:admin
-	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)               //perm:admin
-	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error              //perm:admin
-	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)             //perm:admin
-	DealsSetConsiderOnlineRetrievalDeals(context.Context, bool) error            //perm:admin
-	DealsPieceCidBlocklist(context.Context) ([]cid.Cid, error)                   //perm:admin
-	DealsSetPieceCidBlocklist(context.Context, []cid.Cid) error                  //perm:admin
-	DealsConsiderOfflineStorageDeals(context.Context) (bool, error)              //perm:admin
-	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error             //perm:admin
-	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)            //perm:admin
-	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error           //perm:admin
-	DealsConsiderVerifiedStorageDeals(context.Context) (bool, error)             //perm:admin
-	DealsSetConsiderVerifiedStorageDeals(context.Context, bool) error            //perm:admin
-	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)           //perm:admin
-	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error          //perm:admin
+	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error      //perm:admin
+	DealsImportDataOfSxx(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
+	DealsList(ctx context.Context) ([]*MarketDeal, error)                             //perm:admin
+	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)                    //perm:admin
+	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error                   //perm:admin
+	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)                  //perm:admin
+	DealsSetConsiderOnlineRetrievalDeals(context.Context, bool) error                 //perm:admin
+	DealsPieceCidBlocklist(context.Context) ([]cid.Cid, error)                        //perm:admin
+	DealsSetPieceCidBlocklist(context.Context, []cid.Cid) error                       //perm:admin
+	DealsConsiderOfflineStorageDeals(context.Context) (bool, error)                   //perm:admin
+	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error                  //perm:admin
+	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)                 //perm:admin
+	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error                //perm:admin
+	DealsConsiderVerifiedStorageDeals(context.Context) (bool, error)                  //perm:admin
+	DealsSetConsiderVerifiedStorageDeals(context.Context, bool) error                 //perm:admin
+	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)                //perm:admin
+	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error               //perm:admin
 
 	PiecesListPieces(ctx context.Context) ([]cid.Cid, error)                                 //perm:read
 	PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error)                               //perm:read
@@ -326,12 +327,18 @@ type StorageMiner interface {
 
 	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef) (map[abi.SectorNumber]string, error) //perm:admin
 
+	CheckProve(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
+
 	ComputeProof(ctx context.Context, ssi []builtinactors.ExtendedSectorInfo, rand abi.PoStRandomness, poStEpoch abi.ChainEpoch, nv abinetwork.Version) ([]builtinactors.PoStProof, error) //perm:read
 
 	// RecoverFault can be used to declare recoveries manually. It sends messages
 	// to the miner actor with details of recovered sectors and returns the CID of messages. It honors the
 	// maxPartitionsPerRecoveryMessage from the config
 	RecoverFault(ctx context.Context, sectors []abi.SectorNumber) ([]cid.Cid, error) //perm:admin
+
+	// add by pan for GPU cluster
+	ResetCluster(ctx context.Context, addr string) (string, error) //perm:read
+	// end
 }
 
 var _ storiface.WorkerReturn = *new(StorageMiner)
@@ -470,7 +477,8 @@ type PieceDealInfo struct {
 	DealSchedule DealSchedule
 
 	// Best-effort deal asks
-	KeepUnsealed bool
+	KeepUnsealed   bool
+	RemoteFilepath string
 }
 
 // DealSchedule communicates the time interval of a storage deal. The deal must

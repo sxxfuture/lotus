@@ -59,6 +59,11 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/wdpost"
+
+	"net"
+
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 type StorageMinerAPI struct {
@@ -1248,6 +1253,14 @@ func (sm *StorageMinerAPI) DealsSetExpectedSealDurationFunc(ctx context.Context,
 	return sm.SetExpectedSealDurationFunc(d)
 }
 
+// add by lin
+func (sm *StorageMinerAPI) DealsImportDataOfSxx(ctx context.Context, deal cid.Cid, fname string) error {
+
+	return sm.StorageProvider.ImportDataForDealOfSxx(ctx, deal, fname)
+}
+
+// end
+
 func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
 	fi, err := os.Open(fname)
 	if err != nil {
@@ -1333,6 +1346,35 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 	}
 
 	bad, err := sm.StorageMgr.CheckProvable(ctx, pp, sectors, rg)
+	if err != nil {
+		return nil, err
+	}
+
+	var out = make(map[abi.SectorNumber]string)
+	for sid, err := range bad {
+		out[sid.Number] = err
+	}
+
+	return out, nil
+}
+
+func (sm *StorageMinerAPI) CheckProve(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) {
+	var rg storiface.RGetter
+	if expensive {
+		rg = func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
+			si, err := sm.Miner.SectorsStatus(ctx, id.Number, false)
+			if err != nil {
+				return cid.Undef, false, err
+			}
+			if si.CommR == nil {
+				return cid.Undef, false, xerrors.Errorf("commr is nil")
+			}
+
+			return *si.CommR, si.ReplicaUpdateMessage != nil, nil
+		}
+	}
+
+	bad, err := sm.StorageMgr.CheckProve(ctx, pp, sectors, update, rg)
 	if err != nil {
 		return nil, err
 	}
@@ -1436,3 +1478,89 @@ func (sm *StorageMinerAPI) withdrawBalance(ctx context.Context, amount abi.Token
 
 	return smsg.Cid(), nil
 }
+
+// add by pan for GPU cluster
+func (sm *StorageMinerAPI) ResetCluster(ctx context.Context, addr string) (string, error) {
+	ffiwrapper.LOTUS_CLUSTER_ADDR = addr
+
+	err := sm.SyncMiner(ctx, addr)
+	if err != nil {
+		return "err", err
+	}
+	return "ok", err
+}
+
+func (m *StorageMinerAPI) SyncMiner(ctx context.Context, addr string) error {
+	var handler struct {
+		SyncMiner func(miner *Miner) error
+	}
+	closer, err := jsonrpc.NewClient(ctx, addr, "Filecoin", &handler, nil)
+	if err != nil {
+		return err
+	}
+	defer closer()
+	mineraddr, err := GetAddr()
+	if err != nil {
+		return err
+	}
+	port := ffiwrapper.LOTUS_MINER_PORT
+	mineralias := fmt.Sprintf("miner-%s-%d", mineraddr, port)
+	miner := &Miner{
+		MinerName:    m.BlockMiner.Address().String(),
+		MinerAlias:   mineralias,
+		MinerAddr:    mineraddr,
+		MinerPort:    port,
+		MinerVersion: build.UserVersion(),
+	}
+
+	err = handler.SyncMiner(miner)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type Miner struct {
+	/** 主键 */
+	MinerID int `json:"miner_id"`
+	/** Miner */
+	MinerName string `json:"miner_name"`
+	/** 别名 */
+	MinerAlias string `json:"miner_alias"`
+	/** 地址 */
+	MinerAddr string `json:"miner_addr"`
+	/** 端口 */
+	MinerPort int `json:"miner_port"`
+	/** 版本 */
+	MinerVersion string `json:"miner_version"`
+	/** 时间 */
+	MinerTime time.Time `json:"miner_time"`
+	/** 排序 */
+	MinerOrder int64 `json:"miner_order"`
+	/** 主机 */
+	HostID int `json:"host_id"`
+	/** 集群 */
+	ClusterID int `json:"cluster_id"`
+	/** 状态 */
+	Status int `json:"status"`
+}
+
+func GetAddr() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				addr := ipnet.IP.String()
+				if addr != "127.0.1.1" {
+					return addr, nil
+				}
+			}
+		}
+	}
+	return "", errors.New("获取IP地址失败")
+}
+
+// end

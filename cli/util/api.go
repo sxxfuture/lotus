@@ -122,6 +122,90 @@ func GetAPIInfoMulti(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
 	return []APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v", t.Type())
 }
 
+func GetAPIInfoMultiOfSxx(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
+	// Check if there was a flag passed with the listen address of the API
+	// server (only used by the tests)
+	for _, f := range t.APIFlags() {
+		if !ctx.IsSet(f) {
+			continue
+		}
+		strma := ctx.String(f)
+		strma = strings.TrimSpace(strma)
+
+		return []APIInfo{{Addr: strma}}, nil
+	}
+
+	//
+	// Note: it is not correct/intuitive to prefer environment variables over
+	// CLI flags (repo flags below).
+	//
+	primaryEnv, fallbacksEnvs, deprecatedEnvs := t.APIInfoEnvVarsOfSxx()
+	env, ok := os.LookupEnv(primaryEnv)
+	if ok {
+		// return ParseApiInfoMulti(env), nil
+		return ParseApiInfoMultiOfSxx(env), nil
+	}
+
+	for _, env := range deprecatedEnvs {
+		env, ok := os.LookupEnv(env)
+		if ok {
+			log.Warnf("Using deprecated env(%s) value, please use env(%s) instead.", env, primaryEnv)
+			return ParseApiInfoMulti(env), nil
+		}
+	}
+
+	for _, f := range t.RepoFlags() {
+		// cannot use ctx.IsSet because it ignores default values
+		path := ctx.String(f)
+		if path == "" {
+			continue
+		}
+
+		p, err := homedir.Expand(path)
+		if err != nil {
+			return []APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", f, err)
+		}
+
+		r, err := repo.NewFS(p)
+		if err != nil {
+			return []APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
+		}
+
+		exists, err := r.Exists()
+		if err != nil {
+			return []APIInfo{}, xerrors.Errorf("repo.Exists returned an error: %w", err)
+		}
+
+		if !exists {
+			return []APIInfo{}, errors.New("repo directory does not exist. Make sure your configuration is correct")
+		}
+
+		ma, err := r.APIEndpoint()
+		if err != nil {
+			return []APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
+		}
+
+		token, err := r.APIToken()
+		if err != nil {
+			log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
+		}
+
+		return []APIInfo{{
+			Addr:  ma.String(),
+			Token: token,
+		}}, nil
+	}
+
+	for _, env := range fallbacksEnvs {
+		env, ok := os.LookupEnv(env)
+		if ok {
+			return ParseApiInfoMulti(env), nil
+		}
+	}
+
+	return []APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v", t.Type())
+}
+
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	ainfos, err := GetAPIInfoMulti(ctx, t)
 	if err != nil || len(ainfos) == 0 {
@@ -139,6 +223,29 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 type HttpHead struct {
 	addr   string
 	header http.Header
+}
+
+func GetRawAPIMultiOfSxx(ctx *cli.Context, t repo.RepoType, version string) ([]HttpHead, error) {
+
+	var httpHeads []HttpHead
+	ainfos, err := GetAPIInfoMultiOfSxx(ctx, t)
+	if err != nil || len(ainfos) == 0 {
+		return httpHeads, xerrors.Errorf("could not get API info for %s: %w", t.Type(), err)
+	}
+
+	for _, ainfo := range ainfos {
+		addr, err := ainfo.DialArgs(version)
+		if err != nil {
+			return httpHeads, xerrors.Errorf("could not get DialArgs: %w", err)
+		}
+		httpHeads = append(httpHeads, HttpHead{addr: addr, header: ainfo.AuthHeader()})
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintf(ctx.App.Writer, "using raw API %s endpoint: %s\n", version, httpHeads[0].addr)
+	}
+
+	return httpHeads, nil
 }
 
 func GetRawAPIMulti(ctx *cli.Context, t repo.RepoType, version string) ([]HttpHead, error) {
@@ -329,6 +436,75 @@ func FullNodeWithEthSubscribtionHandler(sh api.EthSubscriber) GetFullNodeOption 
 	return func(opts *GetFullNodeOptions) {
 		opts.ethSubHandler = sh
 	}
+}
+
+func GetFullNodeAPIV1OfSxx(ctx *cli.Context, opts ...GetFullNodeOption) ([]v1api.FullNode, jsonrpc.ClientCloser, []string, error) {
+	// if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
+	// 	return []tn.(v1api.FullNode), func() {}, nil
+	// }
+
+	var options GetFullNodeOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	var rpcOpts []jsonrpc.Option
+	if options.ethSubHandler != nil {
+		rpcOpts = append(rpcOpts, jsonrpc.WithClientHandler("Filecoin", options.ethSubHandler), jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"))
+	}
+
+	heads, err := GetRawAPIMultiOfSxx(ctx, repo.FullNode, "v1")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v1 endpoint:", heads[0].addr)
+	}
+
+	var fullNodes []api.FullNode
+	var closers []jsonrpc.ClientCloser
+	var headList []string
+
+	for _, head := range heads {
+		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header, rpcOpts...)
+		if err != nil {
+			log.Warnf("Not able to establish connection to node with addr: ", head.addr)
+			continue
+		}
+		fullNodes = append(fullNodes, v1api)
+		closers = append(closers, closer)
+		headList = append(headList, head.addr)
+	}
+
+	// When running in cluster mode and trying to establish connections to multiple nodes, fail
+	// if less than 2 lotus nodes are actually running
+	if len(heads) > 1 && len(fullNodes) < 2 {
+		return nil, nil, nil, xerrors.Errorf("Not able to establish connection to more than a single node")
+	}
+
+	finalCloser := func() {
+		for _, c := range closers {
+			c()
+		}
+	}
+
+	var v1APIs []v1api.FullNode
+	for _, fullNode := range fullNodes {
+		var fns []api.FullNode
+		var v1API api.FullNodeStruct
+		fns = append(fns, fullNode)
+		FullNodeProxy(fns, &v1API)
+		v, err := v1API.Version(ctx.Context)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if !v.APIVersion.EqMajorMinor(api.FullAPIVersion1) {
+			return nil, nil, nil, xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
+		}
+		v1APIs = append(v1APIs, &v1API)
+	}
+	return v1APIs, finalCloser, headList, nil
 }
 
 func GetFullNodeAPIV1(ctx *cli.Context, opts ...GetFullNodeOption) (v1api.FullNode, jsonrpc.ClientCloser, error) {
