@@ -342,6 +342,7 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 		// Retry until we run out of sectors to prove.
 		for retries := 0; ; retries++ {
 			skipCount := uint64(0)
+			faultCount := uint64(0)
 			var partitions []miner.PoStPartition
 			var xsinfos []proof7.ExtendedSectorInfo
 			for partIdx, partition := range batch {
@@ -386,6 +387,13 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 					return nil, xerrors.Errorf("getting skipped sector count: %w", err)
 				}
 
+				fc, err := partition.FaultySectors.Count()
+				if err != nil {
+					return nil, xerrors.Errorf("getting skipped sector count: %w", err)
+				}
+
+				faultCount += fc
+
 				skipCount += sc
 
 				ssi, err := s.sectorsForProof(ctx, good, partition.AllSectors, ts)
@@ -414,9 +422,10 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 				"chain-random", rand,
 				"deadline", di,
 				"height", ts.Height(),
-				"skipped", skipCount)
+				"skipped", skipCount,
+				"fault", faultCount)
 
-			if skipCount >= 100 {
+			if (skipCount >= 100) && faultCount == 0 {
 				return nil, xerrors.Errorf("running window post failed: skipped is %d", skipCount)
 			}
 
