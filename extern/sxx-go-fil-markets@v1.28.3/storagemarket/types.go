@@ -115,6 +115,10 @@ type MinerDeal struct {
 	SectorNumber      abi.SectorNumber
 
 	InboundCAR string
+
+	// add by lin
+	RemoteFilepath string
+	// end
 }
 
 // NewDealStages creates a new DealStages object ready to be used.

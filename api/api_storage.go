@@ -104,6 +104,9 @@ type StorageMiner interface {
 	// SectorGetExpectedSealDuration gets the expected time for a sector to seal
 	SectorGetExpectedSealDuration(context.Context) (time.Duration, error) //perm:read
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error   //perm:admin
+
+	SectorsUpdateOfSxx(context.Context, abi.SectorNumber, SectorState, string) error //perm:admin
+
 	// SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
 	// be done with SectorTerminate. Removing and not terminating live sectors will cause additional penalties.
 	SectorRemove(context.Context, abi.SectorNumber) error                           //perm:admin
@@ -297,21 +300,24 @@ type StorageMiner interface {
 	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
-	DealsList(ctx context.Context) ([]*MarketDeal, error)                        //perm:admin
-	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)               //perm:admin
-	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error              //perm:admin
-	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)             //perm:admin
-	DealsSetConsiderOnlineRetrievalDeals(context.Context, bool) error            //perm:admin
-	DealsPieceCidBlocklist(context.Context) ([]cid.Cid, error)                   //perm:admin
-	DealsSetPieceCidBlocklist(context.Context, []cid.Cid) error                  //perm:admin
-	DealsConsiderOfflineStorageDeals(context.Context) (bool, error)              //perm:admin
-	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error             //perm:admin
-	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)            //perm:admin
-	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error           //perm:admin
-	DealsConsiderVerifiedStorageDeals(context.Context) (bool, error)             //perm:admin
-	DealsSetConsiderVerifiedStorageDeals(context.Context, bool) error            //perm:admin
-	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)           //perm:admin
-	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error          //perm:admin
+
+	DealsImportDataOfSxx(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
+
+	DealsList(ctx context.Context) ([]*MarketDeal, error)               //perm:admin
+	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)      //perm:admin
+	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error     //perm:admin
+	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)    //perm:admin
+	DealsSetConsiderOnlineRetrievalDeals(context.Context, bool) error   //perm:admin
+	DealsPieceCidBlocklist(context.Context) ([]cid.Cid, error)          //perm:admin
+	DealsSetPieceCidBlocklist(context.Context, []cid.Cid) error         //perm:admin
+	DealsConsiderOfflineStorageDeals(context.Context) (bool, error)     //perm:admin
+	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error    //perm:admin
+	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)   //perm:admin
+	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error  //perm:admin
+	DealsConsiderVerifiedStorageDeals(context.Context) (bool, error)    //perm:admin
+	DealsSetConsiderVerifiedStorageDeals(context.Context, bool) error   //perm:admin
+	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)  //perm:admin
+	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error //perm:admin
 
 	PiecesListPieces(ctx context.Context) ([]cid.Cid, error)                                 //perm:read
 	PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error)                               //perm:read
@@ -325,6 +331,8 @@ type StorageMiner interface {
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 
 	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef) (map[abi.SectorNumber]string, error) //perm:admin
+
+	CheckProve(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
 
 	ComputeProof(ctx context.Context, ssi []builtinactors.ExtendedSectorInfo, rand abi.PoStRandomness, poStEpoch abi.ChainEpoch, nv abinetwork.Version) ([]builtinactors.PoStProof, error) //perm:read
 
@@ -471,6 +479,8 @@ type PieceDealInfo struct {
 
 	// Best-effort deal asks
 	KeepUnsealed bool
+
+	RemoteFilepath string
 }
 
 // DealSchedule communicates the time interval of a storage deal. The deal must

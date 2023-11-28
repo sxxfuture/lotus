@@ -350,6 +350,74 @@ func (p *Provider) Stop() error {
 	return p.net.StopHandlingRequests()
 }
 
+// add by lin
+func (p *Provider) ImportDataForDealOfSxx(ctx context.Context, propCid cid.Cid, fname string) error {
+	// TODO: be able to check if we have enough disk space
+	var d storagemarket.MinerDeal
+	if err := p.deals.Get(propCid).Get(&d); err != nil {
+		return xerrors.Errorf("failed getting deal %s: %w", propCid, err)
+	}
+
+	tempfi, err := os.Open(fname)
+	if err != nil {
+		return xerrors.Errorf("failed to open given file: %w", err)
+	}
+
+	defer tempfi.Close()
+	cleanup := func() {
+		_ = tempfi.Close()
+	}
+
+	filestat, _ := tempfi.Stat()
+	carSize := uint64(filestat.Size())
+
+	_, err = tempfi.Seek(0, io.SeekStart)
+	if err != nil {
+		cleanup()
+		return xerrors.Errorf("failed to seek through temp imported file: %w", err)
+	}
+
+	if carSizePadded := padreader.PaddedSize(carSize).Padded(); carSizePadded < d.Proposal.PieceSize {
+		// need to pad up!
+		proofType, err := p.spn.GetProofType(ctx, p.actor, nil)
+		if err != nil {
+			cleanup()
+			return xerrors.Errorf("failed to determine proof type: %w", err)
+		}
+		log.Debugw("fetched proof type", "propCid", propCid)
+
+		pieceCid, err := generatePieceCommitment(proofType, tempfi, carSize)
+		if err != nil {
+			cleanup()
+			return xerrors.Errorf("failed to generate commP: %w", err)
+		}
+		log.Debugw("generated pieceCid for imported file", "propCid", propCid)
+
+		rawPaddedCommp, err := commp.PadCommP(
+			// we know how long a pieceCid "hash" is, just blindly extract the trailing 32 bytes
+			pieceCid.Hash()[len(pieceCid.Hash())-32:],
+			uint64(carSizePadded),
+			uint64(d.Proposal.PieceSize),
+		)
+		if err != nil {
+			cleanup()
+			return err
+		}
+		pieceCid, _ = commcid.DataCommitmentV1ToCID(rawPaddedCommp)
+
+		if !pieceCid.Equals(d.Proposal.PieceCID) {
+			cleanup()
+			return xerrors.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, d.Proposal.PieceCID)
+		}
+	}
+
+	log.Debugw("will fire ProviderEventVerifiedData for file", "propCid", propCid)
+
+	return p.deals.Send(propCid, storagemarket.ProviderEventVerifiedData, filestore.Path(fname), filestore.Path(""))
+}
+
+// end
+
 // ImportDataForDeal manually imports data for an offline storage deal
 // It will verify that the data in the passed io.Reader matches the expected piece
 // cid for the given deal or it will error
