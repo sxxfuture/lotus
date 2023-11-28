@@ -107,6 +107,10 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	return nil
 }
 
+func (m *Sealing) handleRecover(ctx statemachine.Context, sector SectorInfo) error {
+	return ctx.Send(SectorAddPieceWait{})
+}
+
 func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo, used abi.UnpaddedPieceSize) (bool, error) {
 	log := log.WithOptions(zap.Fields(
 		zap.Uint64("sector", uint64(sector.SectorNumber)),
@@ -233,6 +237,10 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 						return ctx.Send(SectorAddPieceFailed{err})
 					}
 					for _, p := range messageOfSxx.User.NewPieces {
+						if p.DealInfo.RemoteFilepath == "" {
+							// 用于2k环境测试
+							p.DealInfo.RemoteFilepath = "/home/user/data/car/test.car"
+						}
 						_, err := m.sealer.AddPieceOfSxx(sealer.WithPriority(ctx.Context(), DealSectorPriority),
 							m.minerSector(sector.SectorType, sector.SectorNumber),
 							pieceSizes,
