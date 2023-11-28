@@ -333,8 +333,16 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
+	github.com/moran666666/sector-counter v0.0.0-00010101000000-000000000000 // indirect
+	filbase/filbase_redis v0.0.0-00010101000000-000000000000 // indirect
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+
+replace github.com/moran666666/sector-counter => ./extern/sxx-sector-counter
+
+replace github.com/filecoin-project/go-fil-markets => ./extern/sxx-go-fil-markets@v1.28.3
+
+replace filbase/filbase_redis => ./extern/filbase/filbase_redis
