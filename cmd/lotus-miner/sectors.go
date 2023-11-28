@@ -1832,7 +1832,7 @@ var sectorsUpdateCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
-		if cctx.NArg() != 2 {
+		if cctx.NArg() < 2 {
 			return lcli.IncorrectNumArgs(cctx)
 		}
 

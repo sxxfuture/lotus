@@ -20,8 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 
-	"io/ioutil"
-	"path/filepath"
+	"filbase/filbase_redis"
 )
 
 var errSectorRemoved = errors.New("sector removed")
@@ -137,8 +136,9 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorSeedReady{}, WaitC),
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 	),
-	WaitC:      planOne(),
-	Committing: planCommitting,
+	WaitC:              planOne(),
+	Committing:         planCommitting,
+	WaitCommitFinalize: planOne(),
 	CommitFinalize: planOne(
 		on(SectorFinalized{}, SubmitCommit),
 		on(SectorFinalizedAvailable{}, SubmitCommit),
@@ -156,11 +156,13 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	CommitWait: planOne(
 		on(SectorProving{}, FinalizeSector),
+		on(SectorWaitProving{}, WaitCommitFinalize),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
 	CommitAggregateWait: planOne(
 		on(SectorProving{}, FinalizeSector),
+		on(SectorWaitProving{}, WaitCommitFinalize),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
@@ -531,6 +533,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleWaitC, processed, nil
 	case Committing:
 		return m.handleCommitting, processed, nil
+	case WaitCommitFinalize:
+		return m.handleWaitCommitFinalize, processed, nil
 	case SubmitCommit:
 		return m.handleSubmitCommit, processed, nil
 	case SubmitCommitAggregate:
@@ -697,6 +701,9 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 		case SectorProofReady: // early finalize
 			e.apply(state)
 			state.State = CommitFinalize
+		case SectorWaitCommitFinalize: // early finalize
+			e.apply(state)
+			state.State = WaitCommitFinalize
 		case SectorSeedReady: // seed changed :/
 			if e.SeedEpoch == state.SeedEpoch && bytes.Equal(e.SeedValue, state.SeedValue) {
 				log.Warnf("planCommitting: got SectorSeedReady, but the seed didn't change")
@@ -756,16 +763,31 @@ func (m *Sealing) ForceSectorStateOfSxx(ctx context.Context, id abi.SectorNumber
 	if err != nil {
 		return xerrors.Errorf("sector %d not found, could not change state", id)
 	}
-	minerpath := os.Getenv("LOTUS_MINER_PATH")
-	sectorspath := filepath.Join(minerpath, "./sectorsworker")
-	if err = os.MkdirAll(sectorspath, 0755); err != nil {
-		if !os.IsExist(err) {
-			return xerrors.Errorf("mkdir sectorsworker path err : %+v", err)
+	if state == SectorState("AddPiece") {
+		// 将扇区对应的worker记录到radis中。
+		_, err = filbase_redis.SetWorkerForSector(filbase_redis.PWorkerKey, id.String(), worker)
+		if err != nil {
+			return xerrors.Errorf("fail to set worker into radis for sector %+v", id)
 		}
 	}
-	if state == SectorState("Committing") || state == SectorState("AddPiece") {
-		if err := ioutil.WriteFile(filepath.Join(sectorspath, id.String()), []byte(worker), 0666); err != nil {
-			return xerrors.Errorf("update state err : %+v", err)
+
+	if state == SectorState("Committing") {
+		// 将扇区对应的worker记录到radis中。
+		_, err = filbase_redis.SetWorkerForSector(filbase_redis.CWorkerKey, id.String(), worker)
+		if err != nil {
+			return xerrors.Errorf("fail to set worker into radis for sector %+v", id)
+		}
+	}
+
+	if state == SectorState("CommitFinalize") || state == SectorState("FinalizeSector") {
+		cfg, err := m.getConfig()
+		if err != nil {
+			return xerrors.Errorf("getting config: %w", err)
+		}
+		if cfg.FinalizeEarly {
+			state = SectorState("CommitFinalize")
+		} else {
+			state = SectorState("FinalizeSector")
 		}
 	}
 

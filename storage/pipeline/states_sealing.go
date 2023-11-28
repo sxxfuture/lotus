@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -263,6 +264,10 @@ func (m *Sealing) handleWaitPC(ctx statemachine.Context, sector SectorInfo) erro
 }
 
 func (m *Sealing) handleWaitC(ctx statemachine.Context, sector SectorInfo) error {
+	return nil
+}
+
+func (m *Sealing) handleWaitCommitFinalize(ctx statemachine.Context, sector SectorInfo) error {
 	return nil
 }
 
@@ -716,6 +721,11 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 	}
 
 	if cfg.FinalizeEarly {
+		if os.Getenv("LOTUS_OF_SXX") == "1" {
+			return ctx.Send(SectorWaitCommitFinalize{
+				Proof: porepProof,
+			})
+		}
 		return ctx.Send(SectorProofReady{
 			Proof: porepProof,
 		})
@@ -881,6 +891,14 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 	}
 	if si == nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("proof validation failed, sector not found in sector set after cron")})
+	}
+
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting config: %w", err)
+	}
+	if !cfg.FinalizeEarly && os.Getenv("LOTUS_OF_SXX") == "1" {
+		return ctx.Send(SectorWaitProving{})
 	}
 
 	return ctx.Send(SectorProving{})
