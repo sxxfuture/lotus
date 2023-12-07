@@ -109,17 +109,24 @@ const (
 
 	// StorageDealTransferQueued means the data transfer request has been queued and will be executed soon.
 	StorageDealTransferQueued
+
+	// add by lin
+	StorageDealStagedOfSxx
+	// end
 )
 
 // DealStates maps StorageDealStatus codes to string names
 var DealStates = map[StorageDealStatus]string{
-	StorageDealUnknown:                      "StorageDealUnknown",
-	StorageDealProposalNotFound:             "StorageDealProposalNotFound",
-	StorageDealProposalRejected:             "StorageDealProposalRejected",
-	StorageDealProposalAccepted:             "StorageDealProposalAccepted",
-	StorageDealAcceptWait:                   "StorageDealAcceptWait",
-	StorageDealStartDataTransfer:            "StorageDealStartDataTransfer",
-	StorageDealStaged:                       "StorageDealStaged",
+	StorageDealUnknown:           "StorageDealUnknown",
+	StorageDealProposalNotFound:  "StorageDealProposalNotFound",
+	StorageDealProposalRejected:  "StorageDealProposalRejected",
+	StorageDealProposalAccepted:  "StorageDealProposalAccepted",
+	StorageDealAcceptWait:        "StorageDealAcceptWait",
+	StorageDealStartDataTransfer: "StorageDealStartDataTransfer",
+	StorageDealStaged:            "StorageDealStaged",
+	// add by lin
+	StorageDealStagedOfSxx: "StorageDealStagedOfSxx",
+	// end
 	StorageDealAwaitingPreCommit:            "StorageDealAwaitingPreCommit",
 	StorageDealSealing:                      "StorageDealSealing",
 	StorageDealActive:                       "StorageDealActive",
@@ -148,13 +155,16 @@ var DealStates = map[StorageDealStatus]string{
 
 // DealStatesDescriptions maps StorageDealStatus codes to string description for better UX
 var DealStatesDescriptions = map[StorageDealStatus]string{
-	StorageDealUnknown:                      "Unknown",
-	StorageDealProposalNotFound:             "Proposal not found",
-	StorageDealProposalRejected:             "Proposal rejected",
-	StorageDealProposalAccepted:             "Proposal accepted",
-	StorageDealAcceptWait:                   "AcceptWait",
-	StorageDealStartDataTransfer:            "Starting data transfer",
-	StorageDealStaged:                       "Staged",
+	StorageDealUnknown:           "Unknown",
+	StorageDealProposalNotFound:  "Proposal not found",
+	StorageDealProposalRejected:  "Proposal rejected",
+	StorageDealProposalAccepted:  "Proposal accepted",
+	StorageDealAcceptWait:        "AcceptWait",
+	StorageDealStartDataTransfer: "Starting data transfer",
+	StorageDealStaged:            "Staged",
+	// add by lin
+	StorageDealStagedOfSxx: "Staged",
+	// end
 	StorageDealAwaitingPreCommit:            "Awaiting a PreCommit message on chain",
 	StorageDealSealing:                      "Sealing",
 	StorageDealActive:                       "Active",
@@ -181,13 +191,16 @@ var DealStatesDescriptions = map[StorageDealStatus]string{
 }
 
 var DealStatesDurations = map[StorageDealStatus]string{
-	StorageDealUnknown:                      "",
-	StorageDealProposalNotFound:             "",
-	StorageDealProposalRejected:             "",
-	StorageDealProposalAccepted:             "a few minutes",
-	StorageDealAcceptWait:                   "a few minutes",
-	StorageDealStartDataTransfer:            "a few minutes",
-	StorageDealStaged:                       "a few minutes",
+	StorageDealUnknown:           "",
+	StorageDealProposalNotFound:  "",
+	StorageDealProposalRejected:  "",
+	StorageDealProposalAccepted:  "a few minutes",
+	StorageDealAcceptWait:        "a few minutes",
+	StorageDealStartDataTransfer: "a few minutes",
+	StorageDealStaged:            "a few minutes",
+	// add by lin
+	StorageDealStagedOfSxx: "a few minutes",
+	// end
 	StorageDealAwaitingPreCommit:            "a few minutes",
 	StorageDealSealing:                      "a few hours",
 	StorageDealActive:                       "",

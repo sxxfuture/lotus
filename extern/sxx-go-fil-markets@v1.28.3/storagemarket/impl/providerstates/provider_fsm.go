@@ -143,36 +143,47 @@ var ProviderEvents = fsm.Events{
 			deal.PublishCid = &finalCid
 			return nil
 		}),
+	// add by lin
+	fsm.Event(storagemarket.ProviderEventDealPublishedOfSxx).
+		From(storagemarket.StorageDealPublishing).To(storagemarket.StorageDealStagedOfSxx).
+		Action(func(deal *storagemarket.MinerDeal, dealID abi.DealID, finalCid cid.Cid) error {
+			deal.DealID = dealID
+			deal.PublishCid = &finalCid
+			return nil
+		}),
+	// end
+	// change by lin
 	fsm.Event(storagemarket.ProviderEventFileStoreErrored).
-		FromMany(storagemarket.StorageDealStaged, storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive).To(storagemarket.StorageDealFailing).
+		FromMany(storagemarket.StorageDealStaged, storagemarket.StorageDealStagedOfSxx, storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive).To(storagemarket.StorageDealFailing).
 		Action(func(deal *storagemarket.MinerDeal, err error) error {
 			deal.Message = xerrors.Errorf("accessing file store: %w", err).Error()
 			return nil
 		}),
 
 	fsm.Event(storagemarket.ProviderEventMultistoreErrored).
-		FromMany(storagemarket.StorageDealStaged).To(storagemarket.StorageDealFailing).
+		FromMany(storagemarket.StorageDealStaged, storagemarket.StorageDealStagedOfSxx).To(storagemarket.StorageDealFailing).
 		Action(func(deal *storagemarket.MinerDeal, err error) error {
 			deal.Message = xerrors.Errorf("operating on multistore: %w", err).Error()
 			return nil
 		}),
-	fsm.Event(storagemarket.ProviderEventDealHandoffFailed).From(storagemarket.StorageDealStaged).To(storagemarket.StorageDealFailing).
+	fsm.Event(storagemarket.ProviderEventDealHandoffFailed).FromMany(storagemarket.StorageDealStaged, storagemarket.StorageDealStagedOfSxx).To(storagemarket.StorageDealFailing).
 		Action(func(deal *storagemarket.MinerDeal, err error) error {
 			deal.Message = xerrors.Errorf("handing off deal to node: %w", err).Error()
 			return nil
 		}),
 	fsm.Event(storagemarket.ProviderEventPieceStoreErrored).
-		From(storagemarket.StorageDealStaged).ToJustRecord().
+		FromMany(storagemarket.StorageDealStaged, storagemarket.StorageDealStagedOfSxx).ToJustRecord().
 		Action(func(deal *storagemarket.MinerDeal, err error) error {
 			deal.Message = xerrors.Errorf("recording piece for retrieval: %w", err).Error()
 			return nil
 		}),
 	fsm.Event(storagemarket.ProviderEventDealHandedOff).
-		From(storagemarket.StorageDealStaged).To(storagemarket.StorageDealAwaitingPreCommit).
+		FromMany(storagemarket.StorageDealStaged, storagemarket.StorageDealStagedOfSxx).To(storagemarket.StorageDealAwaitingPreCommit).
 		Action(func(deal *storagemarket.MinerDeal) error {
 			deal.AvailableForRetrieval = true
 			return nil
 		}),
+	// end
 	fsm.Event(storagemarket.ProviderEventDealPrecommitFailed).
 		From(storagemarket.StorageDealAwaitingPreCommit).To(storagemarket.StorageDealFailing).
 		Action(func(deal *storagemarket.MinerDeal, err error) error {
@@ -267,12 +278,15 @@ var ProviderStateEntryFuncs = fsm.StateEntryFuncs{
 	storagemarket.StorageDealPublish:                      PublishDeal,
 	storagemarket.StorageDealPublishing:                   WaitForPublish,
 	storagemarket.StorageDealStaged:                       HandoffDeal,
-	storagemarket.StorageDealAwaitingPreCommit:            VerifyDealPreCommitted,
-	storagemarket.StorageDealSealing:                      VerifyDealActivated,
-	storagemarket.StorageDealRejecting:                    RejectDeal,
-	storagemarket.StorageDealFinalizing:                   CleanupDeal,
-	storagemarket.StorageDealActive:                       WaitForDealCompletion,
-	storagemarket.StorageDealFailing:                      FailDeal,
+	// add by lin
+	storagemarket.StorageDealStagedOfSxx: HandoffDealOfSxx,
+	// end
+	storagemarket.StorageDealAwaitingPreCommit: VerifyDealPreCommitted,
+	storagemarket.StorageDealSealing:           VerifyDealActivated,
+	storagemarket.StorageDealRejecting:         RejectDeal,
+	storagemarket.StorageDealFinalizing:        CleanupDeal,
+	storagemarket.StorageDealActive:            WaitForDealCompletion,
+	storagemarket.StorageDealFailing:           FailDeal,
 }
 
 // ProviderFinalityStates are the states that terminate deal processing for a deal.

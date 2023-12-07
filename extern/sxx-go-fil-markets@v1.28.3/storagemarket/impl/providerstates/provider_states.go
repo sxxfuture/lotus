@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -336,6 +337,13 @@ func WaitForPublish(ctx fsm.Context, environment ProviderDealEnvironment, deal s
 	// Once the deal has been published, release funds that were reserved
 	// for deal publishing
 	releaseReservedFunds(ctx, environment, deal)
+
+	// add by lin
+	if os.Getenv("LOTUS_OF_SXX") == "1" && strings.HasPrefix(string(deal.PiecePath), "/") {
+		return ctx.Trigger(storagemarket.ProviderEventDealPublishedOfSxx, res.DealID, res.FinalCid)
+	}
+	log.Errorw("zlin: unuse SXX publish")
+	// end
 
 	return ctx.Trigger(storagemarket.ProviderEventDealPublished, res.DealID, res.FinalCid)
 }
