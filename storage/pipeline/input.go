@@ -504,6 +504,93 @@ func (m *Sealing) sectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 }
 
+func (m *Sealing) SectorAddPieceToAnyOfSxx(ctx context.Context, size abi.UnpaddedPieceSize, pieceInfo piece.PieceDealInfo) (api.SectorOffset, error) {
+	return m.sectorAddPieceToAnyOfSxx(ctx, size, &pieceInfo)
+}
+
+func (m *Sealing) sectorAddPieceToAnyOfSxx(ctx context.Context, size abi.UnpaddedPieceSize, pieceInfo UniversalPieceInfo) (api.SectorOffset, error) {
+	log.Infof("Adding piece %s", pieceInfo.String())
+
+	if (padreader.PaddedSize(uint64(size))) != size {
+		return api.SectorOffset{}, xerrors.Errorf("cannot allocate unpadded piece")
+	}
+
+	sp, err := m.currentSealProof(ctx)
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("getting current seal proof type: %w", err)
+	}
+
+	ssize, err := sp.SectorSize()
+	if err != nil {
+		return api.SectorOffset{}, err
+	}
+
+	if size > abi.PaddedPieceSize(ssize).Unpadded() {
+		return api.SectorOffset{}, xerrors.Errorf("piece cannot fit into a sector")
+	}
+
+	cfg, err := m.getConfig()
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("getting config: %w", err)
+	}
+
+	ts, err := m.Api.ChainHead(ctx)
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("couldnt get chain head: %w", err)
+	}
+
+	nv, err := m.Api.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("getting network version: %w", err)
+	}
+
+	if err := pieceInfo.Valid(nv); err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("piece metadata invalid: %w", err)
+	}
+
+	startEpoch, err := pieceInfo.StartEpoch()
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("getting last start epoch: %w", err)
+	}
+
+	if ts.Height()+cfg.StartEpochSealingBuffer > startEpoch {
+		return api.SectorOffset{}, xerrors.Errorf(
+			"cannot add piece for deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
+			pieceInfo.PieceCID(), ts.Height(), startEpoch)
+	}
+
+	claimTerms, err := m.getClaimTerms(ctx, pieceInfo, ts.Key())
+	if err != nil {
+		return api.SectorOffset{}, err
+	}
+
+	m.inputLk.Lock()
+	if pp, exist := m.pendingPieces[pieceInfo.Key()]; exist {
+		m.inputLk.Unlock()
+
+		// we already have a pre-existing add piece call for this deal, let's wait for it to finish and see if it's successful
+		res, err := waitAddPieceResp(ctx, pp)
+		if err != nil {
+			return api.SectorOffset{}, err
+		}
+		if res.err == nil {
+			// all good, return the response
+			return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
+		}
+		// if there was an error waiting for a pre-existing add piece call, let's retry
+		m.inputLk.Lock()
+	}
+
+	// addPendingPiece takes over m.inputLk
+	pp := m.addPendingPieceOfSxx(ctx, size, pieceInfo, claimTerms, sp)
+
+	res, err := waitAddPieceResp(ctx, pp)
+	if err != nil {
+		return api.SectorOffset{}, err
+	}
+	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
+}
+
 func (m *Sealing) getClaimTerms(ctx context.Context, deal UniversalPieceInfo, tsk types.TipSetKey) (pieceClaimBounds, error) {
 
 	all, err := deal.GetAllocation(ctx, m.Api, tsk)
@@ -546,6 +633,37 @@ func (m *Sealing) addPendingPiece(ctx context.Context, size abi.UnpaddedPieceSiz
 		claimTerms: ct,
 
 		data: data,
+
+		doneCh:   doneCh,
+		assigned: false,
+	}
+	pp.accepted = func(sn abi.SectorNumber, offset abi.UnpaddedPieceSize, err error) {
+		pp.resp = &pieceAcceptResp{sn, offset, err}
+		close(pp.doneCh)
+	}
+
+	log.Debugw("new pending piece", "pieceID", deal.String(),
+		"dealStart", result.Wrap(deal.StartEpoch()),
+		"dealEnd", result.Wrap(deal.EndEpoch()),
+		"termEnd", ct.claimTermEnd)
+
+	m.pendingPieces[deal.Key()] = pp
+	go func() {
+		defer m.inputLk.Unlock()
+		if err := m.updateInput(ctx, sp); err != nil {
+			log.Errorf("%+v", err)
+		}
+	}()
+
+	return pp
+}
+
+func (m *Sealing) addPendingPieceOfSxx(ctx context.Context, size abi.UnpaddedPieceSize, deal UniversalPieceInfo, ct pieceClaimBounds, sp abi.RegisteredSealProof) *pendingPiece {
+	doneCh := make(chan struct{})
+	pp := &pendingPiece{
+		size:       size,
+		deal:       deal,
+		claimTerms: ct,
 
 		doneCh:   doneCh,
 		assigned: false,
