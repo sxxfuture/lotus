@@ -2,6 +2,8 @@ package sealer
 
 import (
 	"context"
+	"filbase/filbase_redis"
+	"strings"
 	"sync"
 	"time"
 
@@ -474,3 +476,39 @@ func (sh *Scheduler) Close(ctx context.Context) error {
 	}
 	return nil
 }
+
+// add by lin
+func (sh *Scheduler) findWorker(task *WorkerRequest) int {
+	workerid := ""
+	if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTReplicaUpdate {
+		workerid, _ = filbase_redis.GetWorkerForSector(filbase_redis.PWorkerKey, task.Sector.ID.Number.String())
+		if workerid == "" {
+			log.Errorf("can't find p-worker in redis: %s", task.Sector.ID.Number.String())
+			return -1
+		}
+	} else if task.TaskType == sealtasks.TTCommit2 {
+		workerid, _ = filbase_redis.GetWorkerForSector(filbase_redis.CWorkerKey, task.Sector.ID.Number.String())
+		if workerid == "" {
+			log.Errorf("can't find c-worker in redis: %s", task.Sector.ID.Number.String())
+			return -1
+		}
+	}
+	log.Infof("find worker in redis :%+v", workerid)
+	for wnd1, windowRequest := range sh.OpenWindows {
+		worker, ok := sh.Workers[windowRequest.Worker]
+		if !ok {
+			continue
+		}
+		if worker.Enabled == false {
+			log.Infof("find worker in OpenWindows,but it is disabled :%+v", workerid)
+			continue
+		}
+		if strings.TrimSpace(workerid) == worker.Info.Hostname {
+			return wnd1
+		}
+	}
+	log.Infof("can't find enabled %+v worker in OpenWindows :%+v. used official", task.TaskType, workerid)
+	return -1
+}
+
+// end

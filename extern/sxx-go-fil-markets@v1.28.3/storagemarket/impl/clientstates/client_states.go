@@ -349,6 +349,9 @@ func releaseReservedFunds(ctx fsm.Context, environment ClientDealEnvironment, de
 
 func isAccepted(status storagemarket.StorageDealStatus) bool {
 	return status == storagemarket.StorageDealStaged ||
+		// add by lin
+		status == storagemarket.StorageDealStagedOfSxx ||
+		// end
 		status == storagemarket.StorageDealAwaitingPreCommit ||
 		status == storagemarket.StorageDealSealing ||
 		status == storagemarket.StorageDealActive ||

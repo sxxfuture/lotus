@@ -34,6 +34,8 @@ type PieceDealInfo struct {
 
 	// Best-effort deal asks
 	KeepUnsealed bool
+
+	RemoteFilepath string
 }
 
 // DealSchedule communicates the time interval of a storage deal. The deal must
@@ -172,6 +174,10 @@ func (ds *PieceDealInfo) String() string {
 
 func (ds *PieceDealInfo) KeepUnsealedRequested() bool {
 	return ds.KeepUnsealed
+}
+
+func (ds *PieceDealInfo) GetRemoteFilepath() string {
+	return ds.RemoteFilepath
 }
 
 type PieceKey string

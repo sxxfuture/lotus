@@ -87,6 +87,40 @@ func (evt SectorAddPiece) apply(state *SectorInfo) {
 	}
 }
 
+type SectorAddPieceWait struct{}
+
+func (evt SectorAddPieceWait) apply(si *SectorInfo) {}
+
+type SectorRecover struct{}
+
+func (evt SectorRecover) apply(*SectorInfo) {}
+
+type SectorWaitAP struct{}
+
+func (evt SectorWaitAP) apply(*SectorInfo) {}
+
+type SectorWaitPC struct{}
+
+func (evt SectorWaitPC) apply(*SectorInfo) {}
+
+type SectorWaitC struct{}
+
+func (evt SectorWaitC) apply(*SectorInfo) {}
+
+type SectorWaitCommitFinalize struct {
+	Proof []byte
+}
+
+func (evt SectorWaitCommitFinalize) apply(state *SectorInfo) {
+	state.Proof = evt.Proof
+}
+
+type SectorRecoverFinalized struct {
+	Proof []byte
+}
+
+func (evt SectorRecoverFinalized) apply(state *SectorInfo) {}
+
 type SectorPieceAdded struct {
 	NewPieces []SafeSectorPiece
 }
@@ -296,6 +330,10 @@ func (evt SectorCommitAggregateSent) apply(state *SectorInfo) {
 type SectorProving struct{}
 
 func (evt SectorProving) apply(*SectorInfo) {}
+
+type SectorWaitProving struct{}
+
+func (evt SectorWaitProving) apply(*SectorInfo) {}
 
 type SectorFinalized struct{}
 

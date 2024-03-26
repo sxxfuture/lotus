@@ -26,7 +26,17 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+
+	"encoding/json"
+	"os"
+	"strings"
+
+	scClient "github.com/moran666666/sector-counter/client"
 )
+
+type MessageOfSxx struct {
+	User SectorPieceAdded
+}
 
 func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) error {
 	var used abi.UnpaddedPieceSize
@@ -59,6 +69,9 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	if len(m.assignedPieces[sid]) > 0 {
 		m.inputLk.Unlock()
 		// got assigned more pieces in the AddPiece state
+		if os.Getenv("LOTUS_OF_SXX") == "1" {
+			return ctx.Send(SectorAddPieceWait{})
+		}
 		return ctx.Send(SectorAddPiece{})
 	}
 
@@ -78,6 +91,9 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 				// todo check deal start deadline (configurable)
 				m.assignedPieces[sid] = append(m.assignedPieces[sid], pk)
 
+				if os.Getenv("LOTUS_OF_SXX") == "1" {
+					return ctx.Send(SectorAddPieceWait{})
+				}
 				return ctx.Send(SectorAddPiece{})
 			},
 			number:   sector.SectorNumber,
@@ -98,6 +114,10 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	}()
 
 	return nil
+}
+
+func (m *Sealing) handleRecover(ctx statemachine.Context, sector SectorInfo) error {
+	return ctx.Send(SectorAddPieceWait{})
 }
 
 func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo, used abi.UnpaddedPieceSize) (bool, error) {
@@ -224,6 +244,34 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 	m.inputLk.Unlock()
 	if !ok {
 		// nothing to do here (might happen after a restart in AddPiece)
+		if len(sector.Pieces) > 0 {
+			info, err := m.GetSectorInfo(sector.SectorNumber)
+			if err != nil {
+				return ctx.Send(SectorAddPieceFailed{err})
+			}
+			for _, l := range info.Log {
+				if l.Kind == "event;sealing.SectorPieceAdded" {
+					pieceSizes := make([]abi.UnpaddedPieceSize, 0)
+					var messageOfSxx MessageOfSxx
+					if err = json.Unmarshal([]byte(l.Message), &messageOfSxx); err != nil {
+						return ctx.Send(SectorAddPieceFailed{err})
+					}
+					for _, p := range messageOfSxx.User.NewPieces {
+						_, err := m.sealer.AddPieceOfSxx(sealer.WithPriority(ctx.Context(), DealSectorPriority),
+							m.minerSector(sector.SectorType, sector.SectorNumber),
+							pieceSizes,
+							p.Piece().Size.Unpadded(),
+							p.DealInfo().GetRemoteFilepath())
+						if err != nil {
+							err = xerrors.Errorf("writing piece: %w", err)
+							return ctx.Send(SectorAddPieceFailed{err})
+						}
+					}
+					break
+				}
+			}
+			return ctx.Send(SectorWaitPC{})
+		}
 		return ctx.Send(res)
 	}
 
@@ -290,16 +338,55 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			})
 		}
 
-		ppi, err := m.sealer.AddPiece(sealer.WithPriority(ctx.Context(), DealSectorPriority),
-			m.minerSector(sector.SectorType, sector.SectorNumber),
-			pieceSizes,
-			deal.size,
-			deal.data)
-		if err != nil {
-			err = xerrors.Errorf("writing piece: %w", err)
-			deal.accepted(sector.SectorNumber, offset, err)
-			return ctx.Send(SectorAddPieceFailed{err})
+		// ppi, err := m.sealer.AddPiece(sealer.WithPriority(ctx.Context(), DealSectorPriority),
+		//      m.minerSector(sector.SectorType, sector.SectorNumber),
+		//      pieceSizes,
+		//      deal.size,
+		//      deal.data)
+		// if err != nil {
+		//      err = xerrors.Errorf("writing piece: %w", err)
+		//      deal.accepted(sector.SectorNumber, offset, err)
+		//      return ctx.Send(SectorAddPieceFailed{err})
+		// }
+		// change by lin
+		var ppi abi.PieceInfo
+		if os.Getenv("LOTUS_OF_SXX") == "1" && deal.deal.GetRemoteFilepath() != "" {
+			if !strings.HasPrefix(string(deal.deal.GetRemoteFilepath()), "/") {
+				ppi, err = m.sealer.AddPiece(sealer.WithPriority(ctx.Context(), DealSectorPriority),
+					m.minerSector(sector.SectorType, sector.SectorNumber),
+					pieceSizes,
+					deal.size,
+					deal.data)
+				if err != nil {
+					err = xerrors.Errorf("writing piece: %w", err)
+					deal.accepted(sector.SectorNumber, offset, err)
+					return ctx.Send(SectorAddPieceFailed{err})
+				}
+			} else {
+				ppi, err = m.sealer.AddPieceOfSxx(sealer.WithPriority(ctx.Context(), DealSectorPriority),
+					m.minerSector(sector.SectorType, sector.SectorNumber),
+					pieceSizes,
+					deal.size,
+					deal.deal.GetRemoteFilepath())
+				if err != nil {
+					err = xerrors.Errorf("writing piece: %w", err)
+					deal.accepted(sector.SectorNumber, offset, err)
+					return ctx.Send(SectorAddPieceFailed{err})
+				}
+			}
+		} else {
+			ppi, err = m.sealer.AddPiece(sealer.WithPriority(ctx.Context(), DealSectorPriority),
+				m.minerSector(sector.SectorType, sector.SectorNumber),
+				pieceSizes,
+				deal.size,
+				deal.data)
+			if err != nil {
+				err = xerrors.Errorf("writing piece: %w", err)
+				deal.accepted(sector.SectorNumber, offset, err)
+				return ctx.Send(SectorAddPieceFailed{err})
+			}
 		}
+		// end
 		if !ppi.PieceCID.Equals(deal.deal.PieceCID()) {
 			err = xerrors.Errorf("got unexpected piece CID: expected:%s, got:%s", deal.deal.PieceCID(), ppi.PieceCID)
 			deal.accepted(sector.SectorNumber, offset, err)
@@ -845,12 +932,28 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 
 // call with m.inputLk
 func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi.RegisteredSealProof) (abi.SectorNumber, error) {
-	sid, err := m.NextSectorNumber(ctx)
-	if err != nil {
-		return 0, xerrors.Errorf("getting sector number: %w", err)
+	// sid, err := m.NextSectorNumber(ctx)
+	// if err != nil {
+	// 	return 0, xerrors.Errorf("getting sector number: %w", err)
+	// }
+
+	// change by sxx
+	var sid abi.SectorNumber
+	if _, ok := os.LookupEnv("SC_TYPE"); ok {
+		sid0, err := scClient.NewClient().GetSectorID(context.Background(), "")
+		if err != nil {
+			return 0, xerrors.Errorf("getting sector number: %w", err)
+		}
+		sid = abi.SectorNumber(sid0)
+	} else {
+		sid0, err := m.NextSectorNumber(ctx)
+		if err != nil {
+			return 0, xerrors.Errorf("getting sector number: %w", err)
+		}
+		sid = sid0
 	}
 
-	err = m.sealer.NewSector(ctx, m.minerSector(sp, sid))
+	err := m.sealer.NewSector(ctx, m.minerSector(sp, sid))
 	if err != nil {
 		return 0, xerrors.Errorf("initializing sector: %w", err)
 	}

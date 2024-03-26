@@ -150,3 +150,8 @@ func (m *SimpleFaultTracker) CheckProvable(ctx context.Context, pp abi.Registere
 
 	return bad, nil
 }
+
+func (m *SimpleFaultTracker) CheckProve(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef, update []bool, rg storiface.RGetter) (map[abi.SectorID]string, error) {
+
+	return nil, nil
+}

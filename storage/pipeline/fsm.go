@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"filbase/filbase_redis"
 	"fmt"
 	"net/http"
 	"os"
@@ -84,26 +85,36 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorReceive{}, ReceiveSector),
 	),
 	Empty: planOne( // deprecated
+		on(SectorAddPieceWait{}, WaitAP),
 		on(SectorAddPiece{}, AddPiece),
 		on(SectorStartPacking{}, Packing),
 	),
 	WaitDeals: planOne(
+		on(SectorAddPieceWait{}, WaitAP),
 		on(SectorAddPiece{}, AddPiece),
 		on(SectorStartPacking{}, Packing),
 	),
+	Recover: planOne(
+		on(SectorAddPieceWait{}, WaitAP),
+	),
+	WaitAP: planOne(),
 	AddPiece: planOne(
 		on(SectorPieceAdded{}, WaitDeals),
+		on(SectorWaitPC{}, WaitPC),
 		apply(SectorStartPacking{}),
 		apply(SectorAddPiece{}),
 		on(SectorAddPieceFailed{}, AddPieceFailed),
 	),
 	Packing: planOne(on(SectorPacked{}, GetTicket)),
 	GetTicket: planOne(
-		on(SectorTicket{}, PreCommit1),
+		// on(SectorTicket{}, PreCommit1),
+		on(SectorTicket{}, WaitPC),
 		on(SectorCommitFailed{}, CommitFailed),
 	),
+	WaitPC: planOne(),
 	PreCommit1: planOne(
 		on(SectorPreCommit1{}, PreCommit2),
+		on(SectorWaitAP{}, WaitAP),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorDealsExpired{}, DealsExpired),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
@@ -111,8 +122,10 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	PreCommit2: planOne(
 		on(SectorPreCommit2{}, SubmitPreCommitBatch),
+		on(SectorWaitAP{}, WaitAP),
 		on(SectorSealPreCommit2Failed{}, SealPreCommit2Failed),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
+		on(SectorWaitCommitFinalize{}, WaitCommitFinalize),
 	),
 	PreCommitting: planOne(
 		on(SectorPreCommitBatch{}, SubmitPreCommitBatch),
@@ -142,14 +155,18 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryPreCommit{}, PreCommitting),
 	),
 	WaitSeed: planOne(
-		on(SectorSeedReady{}, Committing),
+		// on(SectorSeedReady{}, Committing),
+		on(SectorSeedReady{}, WaitC),
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 	),
-	Committing: planCommitting,
+	WaitC:              planOne(),
+	Committing:         planCommitting,
+	WaitCommitFinalize: planOne(),
 	CommitFinalize: planOne(
 		on(SectorFinalized{}, SubmitCommitAggregate),
 		on(SectorFinalizedAvailable{}, SubmitCommitAggregate),
 		on(SectorFinalizeFailed{}, CommitFinalizeFailed),
+		onWithCB(SectorRecoverFinalized{}, Proving, maybeNotifyRemoteDone(true, "Proving")),
 	),
 	SubmitCommit: planOne(
 		on(SectorCommitSubmitted{}, CommitWait),
@@ -163,11 +180,13 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	CommitWait: planOne(
 		on(SectorProving{}, FinalizeSector),
+		on(SectorWaitProving{}, WaitCommitFinalize),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
 	CommitAggregateWait: planOne(
 		on(SectorProving{}, FinalizeSector),
+		on(SectorWaitProving{}, WaitCommitFinalize),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
@@ -510,12 +529,18 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		fallthrough
 	case WaitDeals:
 		return m.handleWaitDeals, processed, nil
+	case Recover:
+		return m.handleRecover, processed, nil
+	case WaitAP:
+		return m.handleWaitAP, processed, nil
 	case AddPiece:
 		return m.handleAddPiece, processed, nil
 	case Packing:
 		return m.handlePacking, processed, nil
 	case GetTicket:
 		return m.handleGetTicket, processed, nil
+	case WaitPC:
+		return m.handleWaitPC, processed, nil
 	case PreCommit1:
 		return m.handlePreCommit1, processed, nil
 	case PreCommit2:
@@ -530,8 +555,12 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handlePreCommitWait, processed, nil
 	case WaitSeed:
 		return m.handleWaitSeed, processed, nil
+	case WaitC:
+		return m.handleWaitC, processed, nil
 	case Committing:
 		return m.handleCommitting, processed, nil
+	case WaitCommitFinalize:
+		return m.handleWaitCommitFinalize, processed, nil
 	case SubmitCommit:
 		return m.handleSubmitCommit, processed, nil
 	case SubmitCommitAggregate:
@@ -698,6 +727,9 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 		case SectorProofReady: // early finalize
 			e.apply(state)
 			state.State = CommitFinalize
+		case SectorWaitCommitFinalize: // early finalize
+			e.apply(state)
+			state.State = WaitCommitFinalize
 		case SectorSeedReady: // seed changed :/
 			if e.SeedEpoch == state.SeedEpoch && bytes.Equal(e.SeedValue, state.SeedValue) {
 				log.Warnf("planCommitting: got SectorSeedReady, but the seed didn't change")
@@ -708,6 +740,8 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 			e.apply(state)
 			state.State = Committing
 			return uint64(i + 1), nil
+		case SectorWaitC:
+			state.State = WaitC
 		case SectorComputeProofFailed:
 			state.State = ComputeProofFailed
 		case SectorRemoteCommit1Failed, SectorRemoteCommit2Failed:
@@ -745,6 +779,43 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 }
 
 func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, state SectorState) error {
+	m.startupWait.Wait()
+	return m.sectors.Send(id, SectorForceState{state})
+}
+
+func (m *Sealing) ForceSectorStateOfSxx(ctx context.Context, id abi.SectorNumber, state SectorState, worker string) error {
+	log.Infof("ForceSectorStateOfSxx : sector %+v , state %+v, worker : %+v", id, state, worker)
+	_, err := m.SectorsStatus(ctx, id, false)
+	if err != nil {
+		return xerrors.Errorf("sector %d not found, could not change state", id)
+	}
+	if state == SectorState("AddPiece") {
+		// 将扇区对应的worker记录到radis中。
+		_, err = filbase_redis.SetWorkerForSector(filbase_redis.PWorkerKey, id.String(), worker)
+		if err != nil {
+			return xerrors.Errorf("fail to set worker into radis for sector %+v", id)
+		}
+	}
+	if state == SectorState("Committing") {
+		// 将扇区对应的worker记录到radis中。
+		_, err = filbase_redis.SetWorkerForSector(filbase_redis.CWorkerKey, id.String(), worker)
+		if err != nil {
+			return xerrors.Errorf("fail to set worker into radis for sector %+v", id)
+		}
+	}
+
+	if state == SectorState("CommitFinalize") || state == SectorState("FinalizeSector") {
+		cfg, err := m.getConfig()
+		if err != nil {
+			return xerrors.Errorf("getting config: %w", err)
+		}
+		if cfg.FinalizeEarly {
+			state = SectorState("CommitFinalize")
+		} else {
+			state = SectorState("FinalizeSector")
+		}
+	}
+
 	m.startupWait.Wait()
 	return m.sectors.Send(id, SectorForceState{state})
 }
