@@ -784,6 +784,10 @@ func getMethodType(to address.Address, method abi.MethodNum) string {
 				return "GetPeerIDExported"
 			case builtin.MethodsMiner.GetMultiaddrsExported:
 				return "GetMultiaddrsExported"
+			case builtin.MethodsMiner.ProveCommitSectors3:
+				return "ProveCommitSectors3"
+			case builtin.MethodsMiner.ProveReplicaUpdates3:
+				return "ProveReplicaUpdates3"
 			default:
 				log.Errorf("MinerActorOther num is :%+v", method)
 				return "MinerActorOfOther"
@@ -793,6 +797,8 @@ func getMethodType(to address.Address, method abi.MethodNum) string {
 		switch method {
 		case builtin.MethodSend:
 			return "send"
+		case builtin.MethodConstructor:
+			return "Constructor"
 		default:
 			return "Other"
 		}
