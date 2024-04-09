@@ -7,8 +7,10 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -33,6 +35,9 @@ type Interface interface {
 	// Same as above but for system messages (the Cron invocation and block reward payments).
 	// Must NEVER fail.
 	ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error)
+
+	ApplyImplicitMessageOfRecord(ctx context.Context, msg *types.Message, epoch abi.ChainEpoch, blockcid cid.Cid, rplist *api.Records) error
+
 	// Flush all buffered objects into the state store provided to the VM at construction.
 	Flush(ctx context.Context) (cid.Cid, error)
 }

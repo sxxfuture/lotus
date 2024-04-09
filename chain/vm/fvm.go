@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,16 +23,20 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/cron"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -533,6 +538,306 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 	return applyRet, nil
 }
 
+func (vm *FVM) ApplyImplicitMessageOfRecord(ctx context.Context, cmsg *types.Message, epoch abi.ChainEpoch, blockcid cid.Cid, rplist *api.Records) error {
+	defer atomic.AddUint64(&StatApplied, 1)
+	cmsg.GasLimit = math.MaxInt64 / 2
+	vmMsg := cmsg.VMMessage()
+	msgBytes, err := vmMsg.Serialize()
+	if err != nil {
+		return xerrors.Errorf("serializing msg: %w", err)
+	}
+	ret, err := vm.fvm.ApplyImplicitMessage(msgBytes)
+	if err != nil {
+		return xerrors.Errorf("applying msg: %w", err)
+	}
+
+	var aerr aerrors.ActorError
+	if ret.ExitCode != 0 {
+		amsg := ret.FailureInfo
+		if amsg == "" {
+			amsg = "unknown error"
+		}
+		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
+	}
+
+	var et types.ExecutionTrace
+	if len(ret.ExecTraceBytes) != 0 {
+		if err = et.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
+			return xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+		}
+	}
+
+	if ret.ExitCode != 0 {
+		return fmt.Errorf("implicit message failed with exit code: %d and error: %w", ret.ExitCode, aerr)
+	}
+
+	if !cmsg.Value.Equals(abi.NewTokenAmount(0)) {
+		if isMiner(cmsg.To) {
+			record(epoch, cmsg, getMethodType(cmsg.To, cmsg.Method), blockcid, rplist, true)
+		}
+		if isMiner(cmsg.From) {
+			record(epoch, cmsg, getMethodType(cmsg.To, cmsg.Method), blockcid, rplist, false)
+		}
+	}
+	printInternalExecutions(getMethodType(cmsg.To, cmsg.Method), et.Subcalls, epoch, blockcid, rplist)
+
+	return nil
+}
+
+func printInternalExecutions(msgtype string, trace []types.ExecutionTrace, epoch abi.ChainEpoch, blockcid cid.Cid, rplist *api.Records) {
+	for _, im := range trace {
+		if !im.Msg.Value.Equals(abi.NewTokenAmount(0)) {
+			if isMiner(im.Msg.To) {
+				vmsg := &types.Message{
+					From:  im.Msg.From,
+					To:    im.Msg.To,
+					Value: im.Msg.Value,
+				}
+				record(epoch, vmsg, msgtype, blockcid, rplist, true)
+			}
+			if isMiner(im.Msg.From) {
+				vmsg := &types.Message{
+					From:  im.Msg.From,
+					To:    im.Msg.To,
+					Value: im.Msg.Value,
+				}
+				record(epoch, vmsg, msgtype, blockcid, rplist, false)
+			}
+		}
+		printInternalExecutions(msgtype, im.Subcalls, epoch, blockcid, rplist)
+	}
+}
+
+func record(epoch abi.ChainEpoch, im *types.Message, ParentMsgType string, blockcid cid.Cid, rplist *api.Records, isReward bool) {
+	ret := api.FundRecords{
+		Height:          int64(epoch),
+		Message:         "",
+		From:            im.From.String(),
+		To:              im.To.String(),
+		Value:           im.Value,
+		Parent_Msg_Type: ParentMsgType,
+		Blockcid:        blockcid.String(),
+	}
+	if isReward {
+		rplist.Reward = append(rplist.Reward, ret)
+	} else {
+		rplist.Penalty = append(rplist.Penalty, ret)
+	}
+
+	return
+}
+
+func getMethodType(to address.Address, method abi.MethodNum) string {
+	switch to {
+	case builtin.SystemActorAddr:
+		return "SystemActorOfOther"
+	case builtin.InitActorAddr:
+		return "InitActorOfOther"
+	case builtin.RewardActorAddr:
+		switch method {
+		case reward.Methods.Constructor:
+			return "Constructor"
+		case reward.Methods.AwardBlockReward:
+			return "AwardBlockReward"
+		case reward.Methods.ThisEpochReward:
+			return "ThisEpochReward"
+		case reward.Methods.UpdateNetworkKPI:
+			return "UpdateNetworkKPI"
+		default:
+			return "RewardActorOfOther"
+		}
+	case builtin.CronActorAddr:
+		switch method {
+		case cron.Methods.Constructor:
+			return "Constructor"
+		case cron.Methods.EpochTick:
+			return "EpochTick"
+		default:
+			return "CronOfOther"
+		}
+	case builtin.StoragePowerActorAddr:
+		return "StoragePowerOfOther"
+	case builtin.StorageMarketActorAddr:
+		return "StorageMarketActorOfOther"
+	case builtin.VerifiedRegistryActorAddr:
+		return "VerifiedRegistryActorOfOther"
+	case builtin.DatacapActorAddr:
+		return "DatacapActorOfOther"
+	case builtin.BurntFundsActorAddr:
+		return "BurntFundsActorOfOther"
+	case builtin.EthereumAddressManagerActorAddr:
+		return "EthereumAddressManagerActorOfOther"
+	default:
+		if isEVM(to) {
+			switch method {
+			case builtin.MethodsEVM.Constructor:
+				return "Constructor"
+			case builtin.MethodsEVM.Resurrect:
+				return "Resurrect"
+			case builtin.MethodsEVM.GetBytecode:
+				return "GetBytecode"
+			case builtin.MethodsEVM.GetBytecodeHash:
+				return "GetBytecodeHash"
+			case builtin.MethodsEVM.GetStorageAt:
+				return "GetStorageAt"
+			case builtin.MethodsEVM.InvokeContractDelegate:
+				return "InvokeContractDelegate"
+			case builtin.MethodsEVM.InvokeContract:
+				return "InvokeContract"
+			default:
+				return "EVMOfOther"
+			}
+		}
+		if isMiner(to) {
+			switch method {
+			case builtin.MethodsMiner.Constructor:
+				return "Constructor"
+			case builtin.MethodsMiner.ControlAddresses:
+				return "ControlAddresses"
+			case builtin.MethodsMiner.ChangeWorkerAddress:
+				return "ChangeWorkerAddress"
+			case builtin.MethodsMiner.ChangeWorkerAddressExported:
+				return "ChangeWorkerAddressExported"
+			case builtin.MethodsMiner.ChangePeerID:
+				return "ChangePeerID"
+			case builtin.MethodsMiner.ChangePeerIDExported:
+				return "ChangePeerIDExported"
+			case builtin.MethodsMiner.SubmitWindowedPoSt:
+				return "SubmitWindowedPoSt"
+			case builtin.MethodsMiner.PreCommitSector:
+				return "PreCommitSector"
+			case builtin.MethodsMiner.ProveCommitSector:
+				return "ProveCommitSector"
+			case builtin.MethodsMiner.ExtendSectorExpiration:
+				return "ExtendSectorExpiration"
+			case builtin.MethodsMiner.TerminateSectors:
+				return "TerminateSectors"
+			case builtin.MethodsMiner.DeclareFaults:
+				return "DeclareFaults"
+			case builtin.MethodsMiner.DeclareFaultsRecovered:
+				return "DeclareFaultsRecovered"
+			case builtin.MethodsMiner.OnDeferredCronEvent:
+				return "OnDeferredCronEvent"
+			case builtin.MethodsMiner.CheckSectorProven:
+				return "CheckSectorProven"
+			case builtin.MethodsMiner.ApplyRewards:
+				return "ApplyRewards"
+			case builtin.MethodsMiner.ReportConsensusFault:
+				return "ReportConsensusFault"
+			case builtin.MethodsMiner.WithdrawBalance:
+				return "WithdrawBalance"
+			case builtin.MethodsMiner.WithdrawBalanceExported:
+				return "WithdrawBalanceExported"
+			case builtin.MethodsMiner.ConfirmSectorProofsValid:
+				return "ConfirmSectorProofsValid"
+			case builtin.MethodsMiner.ChangeMultiaddrs:
+				return "ChangeMultiaddr"
+			case builtin.MethodsMiner.ChangeMultiaddrsExported:
+				return "ChangeMultiaddrsExported"
+			case builtin.MethodsMiner.CompactPartitions:
+				return "CompactPartitions"
+			case builtin.MethodsMiner.CompactSectorNumbers:
+				return "CompactSectorNumbers"
+			case builtin.MethodsMiner.ConfirmChangeWorkerAddress:
+				return "ConfirmChangeWorkerAddress"
+			case builtin.MethodsMiner.ConfirmChangeWorkerAddressExported:
+				return "ConfirmChangeWorkerAddressExported"
+			case builtin.MethodsMiner.RepayDebt:
+				return "RepayDebt"
+			case builtin.MethodsMiner.RepayDebtExported:
+				return "RepayDebtExported"
+			case builtin.MethodsMiner.ChangeOwnerAddress:
+				return "ChangeOwnerAddress"
+			case builtin.MethodsMiner.ChangeOwnerAddressExported:
+				return "ChangeOwnerAddressExported"
+			case builtin.MethodsMiner.DisputeWindowedPoSt:
+				return "DisputeWindowedPoSt"
+			case builtin.MethodsMiner.PreCommitSectorBatch:
+				return "PreCommitSectorBatch"
+			case builtin.MethodsMiner.ProveCommitAggregate:
+				return "ProveCommitAggregate"
+			case builtin.MethodsMiner.ProveReplicaUpdates:
+				return "ProveReplicaUpdates"
+			case builtin.MethodsMiner.PreCommitSectorBatch2:
+				return "PreCommitSectorBatch2"
+			case builtin.MethodsMiner.ProveReplicaUpdates2:
+				return "ProveReplicaUpdates2"
+			case builtin.MethodsMiner.ChangeBeneficiary:
+				return "ChangeBeneficiary"
+			case builtin.MethodsMiner.ChangeBeneficiaryExported:
+				return "ChangeBeneficiaryExported"
+			case builtin.MethodsMiner.GetBeneficiary:
+				return "GetBeneficiary"
+			case builtin.MethodsMiner.ExtendSectorExpiration2:
+				return "ExtendSectorExpiration2"
+			case builtin.MethodsMiner.GetOwnerExported:
+				return "GetOwnerExported"
+			case builtin.MethodsMiner.IsControllingAddressExported:
+				return "IsControllingAddressExported"
+			case builtin.MethodsMiner.GetSectorSizeExported:
+				return "GetSectorSizeExported"
+			case builtin.MethodsMiner.GetAvailableBalanceExported:
+				return "GetAvailableBalanceExported"
+			case builtin.MethodsMiner.GetVestingFundsExported:
+				return "GetVestingFundsExported"
+			case builtin.MethodsMiner.GetPeerIDExported:
+				return "GetPeerIDExported"
+			case builtin.MethodsMiner.GetMultiaddrsExported:
+				return "GetMultiaddrsExported"
+			default:
+				log.Errorf("MinerActorOther num is :%+v", method)
+				return "MinerActorOfOther"
+			}
+		}
+
+		switch method {
+		case builtin.MethodSend:
+			return "send"
+		default:
+			return "Other"
+		}
+	}
+}
+
+func isMiner(to address.Address) bool {
+	switch to {
+	case builtin.SystemActorAddr:
+		return false
+	case builtin.InitActorAddr:
+		return false
+	case builtin.RewardActorAddr:
+		return false
+	case builtin.CronActorAddr:
+		return false
+	case builtin.StoragePowerActorAddr:
+		return false
+	case builtin.StorageMarketActorAddr:
+		return false
+	case builtin.VerifiedRegistryActorAddr:
+		return false
+	case builtin.DatacapActorAddr:
+		return false
+	case builtin.BurntFundsActorAddr:
+		return false
+	case builtin.EthereumAddressManagerActorAddr:
+		return false
+	default:
+		if strings.HasPrefix(to.String(), "f1") || strings.HasPrefix(to.String(), "f3") || strings.HasPrefix(to.String(), "f4") {
+			return false
+		} else {
+			return true
+		}
+	}
+}
+
+func isEVM(to address.Address) bool {
+	if strings.HasPrefix(to.String(), "f4") {
+		return true
+	} else {
+		return false
+	}
+}
+
 func (vm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
 	return vm.fvm.Flush()
 }
@@ -601,6 +906,27 @@ func (vm *dualExecutionFVM) ApplyImplicitMessage(ctx context.Context, msg *types
 
 	wg.Wait()
 	return ret, err
+}
+
+func (vm *dualExecutionFVM) ApplyImplicitMessageOfRecord(ctx context.Context, msg *types.Message, epoch abi.ChainEpoch, blockcid cid.Cid, rplist *api.Records) (err error) {
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		err = vm.main.ApplyImplicitMessageOfRecord(ctx, msg, epoch, blockcid, rplist)
+	}()
+
+	go func() {
+		defer wg.Done()
+		if err := vm.debug.ApplyImplicitMessageOfRecord(ctx, msg, epoch, blockcid, rplist); err != nil {
+			log.Errorf("debug execution failed: %s", err)
+		}
+	}()
+
+	wg.Wait()
+	return err
 }
 
 func (vm *dualExecutionFVM) Flush(ctx context.Context) (cid.Cid, error) {
