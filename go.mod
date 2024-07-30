@@ -12,6 +12,10 @@ replace github.com/filecoin-project/test-vectors => ./extern/test-vectors // pro
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi // provided via a git submodule
 
+replace filbase/filbase_redis => ./extern/filbase/filbase_redis
+
+replace github.com/moran666666/sector-counter => ./extern/sxx-sector-counter
+
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BurntSushi/toml v1.3.2
@@ -339,4 +343,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
+	filbase/filbase_redis v0.0.0-00010101000000-000000000000 // indirect
+	github.com/moran666666/sector-counter v0.0.0-00010101000000-000000000000 // indirect
 )
