@@ -63,6 +63,8 @@ type FullNode interface {
 	Common
 	Net
 
+	ClientStatelessDealSxx(ctx context.Context, params *types.StartDealParams) (*types.Proposal, error) //perm:write
+
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with the
 	// blockchain, but that do not require any form of state computation.

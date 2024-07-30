@@ -36,6 +36,8 @@ type FullNodeStruct struct {
 }
 
 type FullNodeMethods struct {
+	ClientStatelessDealSxx func(p0 context.Context, p1 *types.StartDealParams) (*types.Proposal, error) `perm:"write"`
+
 	BeaconGetEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
 	ChainDeleteObj func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
@@ -734,6 +736,17 @@ func (s *FullNodeStruct) ChainTipSetWeight(p0 context.Context, p1 types.TipSetKe
 
 func (s *FullNodeStub) ChainTipSetWeight(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) {
 	return *new(types.BigInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) ClientStatelessDealSxx(p0 context.Context, p1 *types.StartDealParams) (*types.Proposal, error) {
+	if s.Internal.ClientStatelessDealSxx == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ClientStatelessDealSxx(p0, p1)
+}
+
+func (s *FullNodeStub) ClientStatelessDealSxx(p0 context.Context, p1 *types.StartDealParams) (*types.Proposal, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) error {
