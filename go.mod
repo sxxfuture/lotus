@@ -171,6 +171,7 @@ require (
 )
 
 require (
+	filbase/filbase_redis v0.0.0-00010101000000-000000000000 // indirect
 	github.com/GeertJohan/go.incremental v1.0.0 // indirect
 	github.com/Jorropo/jsync v1.0.1 // indirect
 	github.com/Kubuxu/go-broadcast v0.0.0-20240621161059-1a8c90734cd6 // indirect
@@ -194,6 +195,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/drand/kyber-bls12381 v0.3.1 // indirect
 	github.com/elastic/go-windows v1.0.0 // indirect
 	github.com/etclabscore/go-jsonschema-walk v0.0.6 // indirect
@@ -272,6 +274,7 @@ require (
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
+	github.com/moran666666/sector-counter v0.0.0-00010101000000-000000000000 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
@@ -310,6 +313,7 @@ require (
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/quic-go v0.44.0 // indirect
 	github.com/quic-go/webtransport-go v0.8.0 // indirect
+	github.com/redis/go-redis/v9 v9.0.3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v2.18.12+incompatible // indirect
@@ -343,6 +347,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
-	filbase/filbase_redis v0.0.0-00010101000000-000000000000 // indirect
-	github.com/moran666666/sector-counter v0.0.0-00010101000000-000000000000 // indirect
 )

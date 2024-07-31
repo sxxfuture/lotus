@@ -72,6 +72,8 @@ type StorageMiner interface {
 	// sectors can be created.
 	SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d piece.PieceDealInfo) (SectorOffset, error) //perm:admin
 
+	SectorAddPieceToAnyOfSxx(ctx context.Context, size abi.UnpaddedPieceSize, d PieceDealInfo) (SectorOffset, error) //perm:admin
+
 	SectorsUnsealPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error //perm:admin
 
 	// List all staged sectors
@@ -99,6 +101,7 @@ type StorageMiner interface {
 	// SectorGetExpectedSealDuration gets the expected time for a sector to seal
 	SectorGetExpectedSealDuration(context.Context) (time.Duration, error) //perm:read
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error   //perm:admin
+	SectorsUpdateOfSxx(context.Context, abi.SectorNumber, SectorState, string) error //perm:admin
 	// SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
 	// be done with SectorTerminate. Removing and not terminating live sectors will cause additional penalties.
 	SectorRemove(context.Context, abi.SectorNumber) error                           //perm:admin

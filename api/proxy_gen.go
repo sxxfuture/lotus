@@ -942,6 +942,8 @@ type StorageMinerMethods struct {
 
 	SectorAddPieceToAny func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data, p3 piece.PieceDealInfo) (SectorOffset, error) `perm:"admin"`
 
+	SectorAddPieceToAnyOfSxx func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 PieceDealInfo) (SectorOffset, error) `perm:"admin"`
+
 	SectorCommitFlush func(p0 context.Context) ([]sealiface.CommitBatchRes, error) `perm:"admin"`
 
 	SectorCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
@@ -999,6 +1001,8 @@ type StorageMinerMethods struct {
 	SectorsUnsealPiece func(p0 context.Context, p1 storiface.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error `perm:"admin"`
 
 	SectorsUpdate func(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error `perm:"admin"`
+
+	SectorsUpdateOfSxx func(p0 context.Context, p1 abi.SectorNumber, p2 SectorState, p3 string) error `perm:"admin"`
 
 	StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
@@ -1076,6 +1080,8 @@ type WorkerStruct struct {
 
 type WorkerMethods struct {
 	AddPiece func(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storiface.Data) (storiface.CallID, error) `perm:"admin"`
+
+	AddPieceOfSxx func(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 string) (storiface.CallID, error) `perm:"admin"`
 
 	DataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (storiface.CallID, error) `perm:"admin"`
 
@@ -5652,6 +5658,17 @@ func (s *StorageMinerStub) SectorAddPieceToAny(p0 context.Context, p1 abi.Unpadd
 	return *new(SectorOffset), ErrNotSupported
 }
 
+func (s *StorageMinerStruct) SectorAddPieceToAnyOfSxx(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 PieceDealInfo) (SectorOffset, error) {
+	if s.Internal.SectorAddPieceToAnyOfSxx == nil {
+		return *new(SectorOffset), ErrNotSupported
+	}
+	return s.Internal.SectorAddPieceToAnyOfSxx(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) SectorAddPieceToAnyOfSxx(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 PieceDealInfo) (SectorOffset, error) {
+	return *new(SectorOffset), ErrNotSupported
+}
+
 func (s *StorageMinerStruct) SectorCommitFlush(p0 context.Context) ([]sealiface.CommitBatchRes, error) {
 	if s.Internal.SectorCommitFlush == nil {
 		return *new([]sealiface.CommitBatchRes), ErrNotSupported
@@ -5971,6 +5988,17 @@ func (s *StorageMinerStub) SectorsUpdate(p0 context.Context, p1 abi.SectorNumber
 	return ErrNotSupported
 }
 
+func (s *StorageMinerStruct) SectorsUpdateOfSxx(p0 context.Context, p1 abi.SectorNumber, p2 SectorState, p3 string) error {
+	if s.Internal.SectorsUpdateOfSxx == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorsUpdateOfSxx(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStub) SectorsUpdateOfSxx(p0 context.Context, p1 abi.SectorNumber, p2 SectorState, p3 string) error {
+	return ErrNotSupported
+}
+
 func (s *StorageMinerStruct) StorageAddLocal(p0 context.Context, p1 string) error {
 	if s.Internal.StorageAddLocal == nil {
 		return ErrNotSupported
@@ -6287,6 +6315,17 @@ func (s *WorkerStruct) AddPiece(p0 context.Context, p1 storiface.SectorRef, p2 [
 }
 
 func (s *WorkerStub) AddPiece(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storiface.Data) (storiface.CallID, error) {
+	return *new(storiface.CallID), ErrNotSupported
+}
+
+func (s *WorkerStruct) AddPieceOfSxx(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 string) (storiface.CallID, error) {
+	if s.Internal.AddPieceOfSxx == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
+	return s.Internal.AddPieceOfSxx(p0, p1, p2, p3, p4)
+}
+
+func (s *WorkerStub) AddPieceOfSxx(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 string) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 

@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/strle"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const parallelSectorChecks = 300
@@ -79,6 +80,14 @@ func getOnDiskInfo(cctx *cli.Context, id abi.SectorNumber, onChainInfo bool) (ap
 var sectorsPledgeCmd = &cli.Command{
 	Name:  "pledge",
 	Usage: "store random data in a sector",
+	// add by pan
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "worker",
+			Value: "",
+		},
+	},
+	// end
 	Action: func(cctx *cli.Context) error {
 		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -91,6 +100,20 @@ var sectorsPledgeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		// add by pan
+		worker := cctx.String("worker")
+		if worker != "" {
+			minerpath := os.Getenv("LOTUS_MINER_PATH")
+			path := minerpath + "/sectors"
+			_, err = os.Stat(path)
+			if os.IsNotExist(err) {
+				err = os.Mkdir(path, 0755)
+			}
+			path = path + "/" + storiface.SectorName(id)
+			err = os.WriteFile(path, []byte(worker), 0666)
+		}
+		// end
 
 		fmt.Println("Created CC sector: ", id.Number)
 
@@ -993,7 +1016,7 @@ var sectorsUpdateCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
-		if cctx.NArg() != 2 {
+		if cctx.NArg() < 2 {
 			return lcli.IncorrectNumArgs(cctx)
 		}
 
@@ -1014,6 +1037,10 @@ var sectorsUpdateCmd = &cli.Command{
 				fmt.Printf("%s\n", string(state))
 			}
 			return nil
+		}
+
+		if os.Getenv("LOTUS_OF_SXX") == "1" {
+			return minerAPI.SectorsUpdateOfSxx(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)), cctx.Args().Get(2))
 		}
 
 		return minerAPI.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))

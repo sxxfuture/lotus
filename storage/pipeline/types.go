@@ -59,6 +59,7 @@ type UniversalPieceInfo interface {
 	KeepUnsealedRequested() bool
 
 	GetAllocation(ctx context.Context, aapi piece.AllocationAPI, tsk types.TipSetKey) (*verifreg.Allocation, error)
+	GetRemoteFilepath() string
 }
 
 type SectorInfo struct {
@@ -350,4 +351,12 @@ func (sp *SafeSectorPiece) GetAllocation(ctx context.Context, aapi piece.Allocat
 	}
 
 	return sp.real.DealInfo.GetAllocation(ctx, aapi, tsk)
+}
+
+func (sp *SafeSectorPiece) GetRemoteFilepath() string {
+	if !sp.HasDealInfo() {
+		return sp.real.DealInfo.RemoteFilepath
+	}
+
+	return sp.real.DealInfo.GetRemoteFilepath()
 }
