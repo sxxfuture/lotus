@@ -40,6 +40,7 @@ type Gateway interface {
 	StateMinerSectorCount(context.Context, address.Address, types.TipSetKey) (MinerSectors, error)
 	GasEstimateGasPremium(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error)
 	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*InvocResult, error)
+	StateReplayBlocks(context.Context, types.TipSetKey) (*Records, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainPutObj(context.Context, blocks.Block) error
 	ChainHead(ctx context.Context) (*types.TipSet, error)

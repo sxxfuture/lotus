@@ -308,3 +308,17 @@ func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.C
 
 	return finder.outm, finder.outr, nil
 }
+
+func (sm *StateManager) ReplayBlocks(ctx context.Context, ts *types.TipSet) (*api.Records, error) {
+	rplist := api.Records{
+		Reward:  make([]api.FundRecords, 0),
+		Penalty: make([]api.FundRecords, 0),
+	}
+
+	_, _, err := sm.tsExec.ExecuteTipSetOfRecord(ctx, sm, ts, nil, true, &rplist)
+	if err != nil && !xerrors.Is(err, errHaltExecution) {
+		return nil, xerrors.Errorf("unexpected error during execution: %w", err)
+	}
+
+	return &rplist, nil
+}

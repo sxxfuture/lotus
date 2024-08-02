@@ -294,6 +294,8 @@ type FullNodeMethods struct {
 
 	StateReplay func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*api.InvocResult, error) `perm:"read"`
 
+	StateReplayBlocks func(p0 context.Context, p1 types.TipSetKey) (*api.Records, error) `perm:"read"`
+
 	StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) `perm:"read"`
 
 	StateSearchMsgLimited func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*api.MsgLookup, error) `perm:"read"`
@@ -455,6 +457,8 @@ type GatewayMethods struct {
 	StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (abinetwork.Version, error) ``
 
 	StateReplay func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*api.InvocResult, error) ``
+
+	StateReplayBlocks func(p0 context.Context, p1 types.TipSetKey) (*api.Records, error) ``
 
 	StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) ``
 
@@ -1891,6 +1895,17 @@ func (s *FullNodeStub) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 ci
 	return nil, ErrNotSupported
 }
 
+func (s *FullNodeStruct) StateReplayBlocks(p0 context.Context, p1 types.TipSetKey) (*api.Records, error) {
+	if s.Internal.StateReplayBlocks == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateReplayBlocks(p0, p1)
+}
+
+func (s *FullNodeStub) StateReplayBlocks(p0 context.Context, p1 types.TipSetKey) (*api.Records, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *FullNodeStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
 	if s.Internal.StateSearchMsg == nil {
 		return nil, ErrNotSupported
@@ -2713,6 +2728,17 @@ func (s *GatewayStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 c
 }
 
 func (s *GatewayStub) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*api.InvocResult, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) StateReplayBlocks(p0 context.Context, p1 types.TipSetKey) (*api.Records, error) {
+	if s.Internal.StateReplayBlocks == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateReplayBlocks(p0, p1)
+}
+
+func (s *GatewayStub) StateReplayBlocks(p0 context.Context, p1 types.TipSetKey) (*api.Records, error) {
 	return nil, ErrNotSupported
 }
 

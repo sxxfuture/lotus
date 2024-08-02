@@ -120,6 +120,7 @@ func (m *migrationResultCache) Delete(ctx context.Context, root cid.Cid) {
 type Executor interface {
 	NewActorRegistry() *vm.ActorRegistry
 	ExecuteTipSet(ctx context.Context, sm *StateManager, ts *types.TipSet, em ExecMonitor, vmTracing bool) (stateroot cid.Cid, rectsroot cid.Cid, err error)
+	ExecuteTipSetOfRecord(ctx context.Context, sm *StateManager, ts *types.TipSet, em ExecMonitor, vmTracing bool, rplist *api.Records) (stateroot cid.Cid, rectsroot cid.Cid, err error)
 }
 
 type StateManager struct {

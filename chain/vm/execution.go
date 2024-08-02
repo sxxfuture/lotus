@@ -12,6 +12,9 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/api"
 )
 
 const (
@@ -52,6 +55,13 @@ func (e *vmExecutor) ApplyImplicitMessage(ctx context.Context, msg *types.Messag
 	defer token.Done()
 
 	return e.vmi.ApplyImplicitMessage(ctx, msg)
+}
+
+func (e *vmExecutor) ApplyImplicitMessageOfRecord(ctx context.Context, msg *types.Message, epoch abi.ChainEpoch, blockcid cid.Cid, rplist *api.Records) error {
+	token := execution.getToken(ctx, e.lane)
+	defer token.Done()
+
+	return e.vmi.ApplyImplicitMessageOfRecord(ctx, msg, epoch, blockcid, rplist)
 }
 
 func (e *vmExecutor) Flush(ctx context.Context) (cid.Cid, error) {
