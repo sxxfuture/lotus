@@ -373,6 +373,7 @@ type FullNode interface {
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
 	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*InvocResult, error) //perm:read
+	StateReplayBlocks(context.Context, types.TipSetKey) (*Records, error) //perm:read
 	// StateGetActor returns the indicated actor's nonce and balance.
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) //perm:read
 	// StateReadState returns the indicated actor's state.
@@ -1051,6 +1052,21 @@ type BlockMessages struct {
 type Message struct {
 	Cid     cid.Cid
 	Message *types.Message
+}
+
+type Records struct {
+	Reward  []FundRecords
+	Penalty []FundRecords
+}
+
+type FundRecords struct {
+	Height          int64
+	Message         string
+	From            string
+	To              string
+	Value           big.Int
+	Parent_Msg_Type string
+	Blockcid        string
 }
 
 type ActorState struct {

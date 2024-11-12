@@ -37,6 +37,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 const MaxCallDepth = 4096
@@ -635,6 +637,14 @@ func (vm *LegacyVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*App
 		GasCosts:       &gasOutputs,
 		Duration:       time.Since(start),
 	}, nil
+}
+
+func (vm *LegacyVM) ApplyImplicitMessageOfRecord(ctx context.Context, msg *types.Message, _ abi.ChainEpoch, _ cid.Cid, _ *api.Records) error {
+	start := build.Clock.Now()
+	defer atomic.AddUint64(&StatApplied, 1)
+	_, actorErr, rt := vm.send(ctx, msg, nil, nil, start)
+	rt.finilizeGasTracing()
+	return actorErr
 }
 
 func (vm *LegacyVM) ShouldBurn(ctx context.Context, st *state.StateTree, msg *types.Message, errcode exitcode.ExitCode) (bool, error) {

@@ -2490,6 +2490,19 @@ func (mr *MockFullNodeMockRecorder) StateReplay(arg0, arg1, arg2 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateReplay", reflect.TypeOf((*MockFullNode)(nil).StateReplay), arg0, arg1, arg2)
 }
 
+func (m *MockFullNode) StateReplayBlocks(arg0 context.Context, arg1 types.TipSetKey) (*api.Records, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateReplayBlocks", arg0, arg1)
+	ret0, _ := ret[0].(*api.Records)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (mr *MockFullNodeMockRecorder) StateReplayBlocks(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateReplayBlocks", reflect.TypeOf((*MockFullNode)(nil).StateReplayBlocks), arg0, arg1)
+}
+
 // StateSearchMsg mocks base method.
 func (m *MockFullNode) StateSearchMsg(arg0 context.Context, arg1 cid.Cid) (*api.MsgLookup, error) {
 	m.ctrl.T.Helper()

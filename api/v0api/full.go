@@ -327,6 +327,7 @@ type FullNode interface {
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
 	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error) //perm:read
+	StateReplayBlocks(context.Context, types.TipSetKey) (*api.Records, error) //perm:read
 	// StateGetActor returns the indicated actor's nonce and balance.
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) //perm:read
 	// StateReadState returns the indicated actor's state.

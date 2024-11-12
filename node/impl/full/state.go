@@ -472,6 +472,21 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}, nil
 }
 
+func (a *StateAPI) StateReplayBlocks(ctx context.Context, tsk types.TipSetKey) (*api.Records, error) {
+	var ts *types.TipSet
+	var err error
+	if tsk == types.EmptyTSK {
+		return nil, xerrors.Errorf("tipsetkey must be set")
+	} else {
+		ts, err = a.Chain.LoadTipSet(ctx, tsk)
+		if err != nil {
+			return nil, xerrors.Errorf("loading specified tipset %s: %w", tsk, err)
+		}
+	}
+
+	return a.StateManager.ReplayBlocks(ctx, ts)
+}
+
 func (m *StateModule) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (a *types.Actor, err error) {
 	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
